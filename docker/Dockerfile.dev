@@ -1,4 +1,4 @@
-# 使用Python 3.11作为基础镜像
+# 开发环境 Dockerfile
 FROM python:3.11-slim
 
 # 设置工作目录
@@ -10,6 +10,9 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+# 使用国内镜像源加速（可选，如果网络不稳定）
+RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -19,9 +22,10 @@ RUN apt-get update && apt-get install -y \
 # 复制依赖文件
 COPY requirements.txt .
 
-# 安装Python依赖
+# 安装Python依赖（包括开发工具）
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    pip install watchfiles
 
 # 复制项目文件
 COPY . .
@@ -32,7 +36,6 @@ RUN mkdir -p logs
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-
+# 开发模式启动命令（支持热更新）
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 

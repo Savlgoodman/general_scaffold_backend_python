@@ -1,0 +1,94 @@
+# 生产环境 Docker Compose 配置
+version: '3.8'
+
+# 项目名称（会显示在 Docker Desktop 中）
+name: general-scaffold-prod
+
+services:
+  # PostgreSQL数据库
+  postgres-prod:
+    image: postgres:15-alpine
+    container_name: scaffold_postgres_prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: ${POSTGRES_DB:-scaffold_prod}
+      TZ: Asia/Shanghai
+    ports:
+      - "13002:5432"  # 使用不同端口避免冲突
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - scaffold_prod_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis缓存
+  redis-prod:
+    image: redis:7-alpine
+    container_name: scaffold_redis_prod
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-change_me_in_production}
+    ports:
+      - "13001:6379"  # 使用不同端口避免冲突
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - scaffold_prod_network
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # FastAPI应用 - 生产模式
+  app-prod:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    container_name: scaffold_app_prod
+    environment:
+      ENVIRONMENT: PROD
+      DATABASE_HOST: postgres-prod
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: ${POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      DATABASE_NAME: ${POSTGRES_DB:-scaffold_prod}
+      REDIS_HOST: redis-prod
+      REDIS_PORT: 12001
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me_in_production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change_me_in_production}
+    ports:
+      - "8001:8000"  # 生产环境使用8001端口
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      - scaffold_prod_network
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    restart: always
+    command: >
+      sh -c "
+        echo '等待数据库准备就绪...' &&
+        sleep 5 &&
+        echo '初始化数据库...' &&
+        python init_db.py &&
+        echo '启动应用（生产模式）...' &&
+        gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --access-logfile - --error-logfile -
+      "
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+
+networks:
+  scaffold_prod_network:
+    driver: bridge
+

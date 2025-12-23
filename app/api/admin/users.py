@@ -93,6 +93,14 @@ def get_users(
 ):
     """
     获取用户列表（需要管理员权限）
+    
+    必传参数：
+    - page: 页码
+    - page_size: 每页数量
+    
+    可选查询条件：
+    - keyword: 搜索关键词（用户名、邮箱、全名）
+    - is_active: 是否激活
     """
     skip = (page - 1) * page_size
     users, total = UserService.get_list(db, skip, page_size, keyword, is_active)

@@ -16,24 +16,48 @@ from app.utils.dependencies import get_current_user, get_current_superuser
 router = APIRouter(prefix="/logs", tags=["API日志"])
 
 
+def parse_int_or_none(value: Optional[str]) -> Optional[int]:
+    """将字符串转换为整数，空字符串或None返回None"""
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def parse_datetime_or_none(value: Optional[str]) -> Optional[datetime]:
+    """将字符串转换为datetime，空字符串或None返回None"""
+    if value is None or value == "":
+        return None
+    try:
+        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except (ValueError, TypeError):
+        return None
+
+
 @router.get("", response_model=Response[PageResponse[APILogResponse]], summary="获取API日志列表")
 def get_api_logs(
-    method: Optional[str] = Query(None, description="请求方法"),
-    path: Optional[str] = Query(None, description="请求路径"),
-    user_id: Optional[int] = Query(None, description="用户ID"),
-    username: Optional[str] = Query(None, description="用户名"),
-    status_code: Optional[int] = Query(None, description="响应状态码"),
-    start_time: Optional[datetime] = Query(None, description="开始时间"),
-    end_time: Optional[datetime] = Query(None, description="结束时间"),
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    method: Optional[str] = Query(None, description="请求方法"),
+    path: Optional[str] = Query(None, description="请求路径"),
+    user_id: Optional[str] = Query(None, description="用户ID"),
+    username: Optional[str] = Query(None, description="用户名"),
+    status_code: Optional[str] = Query(None, description="响应状态码"),
+    start_time: Optional[str] = Query(None, description="开始时间"),
+    end_time: Optional[str] = Query(None, description="结束时间"),
     current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
     获取API日志列表（需要管理员权限）
     
-    支持多种查询条件：
+    必传参数：
+    - page: 页码
+    - page_size: 每页数量
+    
+    可选查询条件：
     - 请求方法
     - 请求路径（模糊查询）
     - 用户ID
@@ -41,16 +65,22 @@ def get_api_logs(
     - 响应状态码
     - 时间范围
     """
+    # 处理可能为空字符串的参数
+    parsed_user_id = parse_int_or_none(user_id)
+    parsed_status_code = parse_int_or_none(status_code)
+    parsed_start_time = parse_datetime_or_none(start_time)
+    parsed_end_time = parse_datetime_or_none(end_time)
+    
     query_params = APILogQuery(
-        method=method,
-        path=path,
-        user_id=user_id,
-        username=username,
-        status_code=status_code,
-        start_time=start_time,
-        end_time=end_time,
         page=page,
         page_size=page_size,
+        method=method if method else None,
+        path=path if path else None,
+        user_id=parsed_user_id,
+        username=username if username else None,
+        status_code=parsed_status_code,
+        start_time=parsed_start_time,
+        end_time=parsed_end_time
     )
     
     logs, total = APILogService.get_list(db, query_params)
@@ -122,8 +152,8 @@ def get_my_api_logs(
 
 @router.get("/statistics/summary", response_model=Response, summary="获取日志统计")
 def get_log_statistics(
-    start_time: Optional[datetime] = Query(None, description="开始时间"),
-    end_time: Optional[datetime] = Query(None, description="结束时间"),
+    start_time: Optional[str] = Query(None, description="开始时间"),
+    end_time: Optional[str] = Query(None, description="结束时间"),
     current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
@@ -135,7 +165,10 @@ def get_log_statistics(
     - 各状态码统计
     - 平均响应时长
     """
-    stats = APILogService.get_statistics(db, start_time, end_time)
+    parsed_start_time = parse_datetime_or_none(start_time)
+    parsed_end_time = parse_datetime_or_none(end_time)
+    
+    stats = APILogService.get_statistics(db, parsed_start_time, parsed_end_time)
     
     return Response(
         code=200,
@@ -162,5 +195,3 @@ def cleanup_old_logs(
         message=f"清理成功，删除了 {count} 条日志",
         data={"deleted_count": count}
     )
-
-

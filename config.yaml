@@ -15,9 +15,9 @@ dev:
   # 数据库配置
   database:
     host: "127.0.0.1"
-    port: 5432
+    port: 12002
     username: "postgres"
-    password: "password"
+    password: "postgres"
     database: "scaffold_dev"
     echo: true  # 打印SQL语句
     pool_size: 10
@@ -37,8 +37,8 @@ dev:
   jwt:
     secret_key: "your-secret-key-change-in-production"
     algorithm: "HS256"
-    access_token_expire_minutes: 30
-    refresh_token_expire_days: 7
+    access_token_expire_minutes: 999999
+    refresh_token_expire_days: 999999
     
   # 日志配置
   logging:

@@ -1,277 +1,254 @@
 # General Scaffold Backend - FastAPI
 
-基于 FastAPI 的后台管理系统后端项目，提供完整的用户管理、权限控制、API 日志记录等功能。
+基于 FastAPI 的后台管理系统后端项目，提供完整的用户管理、权限控制、API日志记录等功能。
 
-## 技术栈
+## 🚀 快速开始
 
--   **FastAPI**: 现代化的 Python Web 框架
--   **SQLAlchemy**: ORM 框架
--   **PostgreSQL**: 关系型数据库
--   **Redis**: 缓存和会话存储
--   **JWT**: 用户认证
--   **Docker**: 容器化部署
--   **Pydantic**: 数据验证
--   **Loguru**: 日志管理
+### 方式一：Docker 开发（推荐）⭐
 
-## 项目结构
+**Windows:**
+```powershell
+# 一键启动开发环境
+.\start-docker-dev.ps1
+```
+
+**Linux/Mac:**
+```bash
+# 赋予执行权限
+chmod +x start-docker-dev.sh
+
+# 一键启动开发环境
+./start-docker-dev.sh
+```
+
+启动后访问：
+- **应用**: http://localhost:8000
+- **API文档**: http://localhost:8000/docs
+- **默认账号**: admin / admin123
+
+### 方式二：本地开发
+
+```bash
+# 1. 创建虚拟环境
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# 2. 安装依赖
+pip install -r requirements.txt
+
+# 3. 配置数据库（修改 config.yaml）
+# 4. 初始化数据库
+python init_db.py
+
+# 5. 启动应用
+python main.py
+```
+
+## 📚 技术栈
+
+- **FastAPI**: 现代化的 Python Web 框架
+- **SQLAlchemy**: ORM 框架
+- **PostgreSQL**: 关系型数据库
+- **Redis**: 缓存和会话存储
+- **JWT**: 用户认证
+- **Docker**: 容器化部署
+- **Pydantic**: 数据验证
+- **Loguru**: 日志管理
+
+## 📁 项目结构
 
 ```
 general_scaffold_backend_python/
 ├── app/                        # 应用主目录
-│   ├── api/                    # API路由
-│   │   ├── v1/                 # API v1版本
-│   │   │   ├── auth.py         # 认证相关API
-│   │   │   ├── users.py        # 用户管理API
-│   │   │   └── api_logs.py     # API日志API
-│   │   └── __init__.py
+│   ├── api/v1/                 # API路由
 │   ├── core/                   # 核心模块
-│   │   ├── app.py              # FastAPI应用创建
-│   │   ├── config.py           # 配置管理
-│   │   ├── database.py         # 数据库连接
-│   │   ├── redis.py            # Redis连接
-│   │   ├── security.py         # 安全相关（JWT、密码加密）
-│   │   └── logger.py           # 日志配置
 │   ├── middleware/             # 中间件
-│   │   ├── auth.py             # 认证中间件
-│   │   └── api_logger.py       # API日志中间件
 │   ├── models/                 # 数据库模型
-│   │   ├── user.py             # 用户模型
-│   │   └── api_log.py          # API日志模型
 │   ├── schemas/                # Pydantic Schemas
-│   │   ├── user.py             # 用户Schema
-│   │   ├── api_log.py          # API日志Schema
-│   │   └── common.py           # 通用Schema
 │   ├── services/               # 业务逻辑层
-│   │   ├── user_service.py     # 用户服务
-│   │   └── api_log_service.py  # API日志服务
 │   └── utils/                  # 工具函数
-│       └── dependencies.py     # 依赖注入
+├── docker/                     # Docker 配置
+│   ├── Dockerfile.dev          # 开发环境镜像
+│   ├── Dockerfile.prod         # 生产环境镜像
+│   ├── docker-compose.dev.yml # 开发环境编排
+│   ├── docker-compose.prod.yml# 生产环境编排
+│   ├── docker-dev.sh           # 开发环境管理脚本
+│   ├── docker-prod.sh          # 生产环境管理脚本
+│   └── README.md               # Docker 使用文档
+├── database/                   # 数据库脚本
+│   ├── init.sql                # 初始化 SQL
+│   ├── create_tables.py        # 手动创建表脚本
+│   └── README.md               # 数据库文档
+├── tests/                      # 测试模块
 ├── logs/                       # 日志文件目录
 ├── config.yaml                 # 配置文件
 ├── main.py                     # 应用入口
+├── init_db.py                  # 数据库初始化脚本
 ├── requirements.txt            # Python依赖
-├── Dockerfile                  # Docker镜像构建文件
-├── docker-compose.yml          # Docker Compose配置
-├── .gitignore                  # Git忽略文件
+├── start-docker-dev.sh         # Docker 快速启动（Linux/Mac）
+├── start-docker-dev.ps1        # Docker 快速启动（Windows）
 └── README.md                   # 项目说明
-
 ```
 
-## 功能特性
+## ✨ 功能特性
 
 ### 1. 用户系统
+- ✅ 用户注册、登录（JWT认证）
+- ✅ 用户信息管理（CRUD）
+- ✅ 密码加密（bcrypt）
+- ✅ 权限控制（普通用户/超级管理员）
+- ✅ 用户状态管理
 
--   ✅ 用户注册、登录
--   ✅ JWT Token 认证
--   ✅ 用户信息管理（CRUD）
--   ✅ 密码修改
--   ✅ 用户权限控制（普通用户/超级管理员）
--   ✅ 用户状态管理（激活/禁用）
+### 2. API日志系统
+- ✅ 自动记录所有API调用
+- ✅ 记录请求方法、路径、参数、响应状态、响应时长
+- ✅ 记录用户信息、IP地址、User Agent
+- ✅ 支持多条件查询和分页
+- ✅ 日志统计和清理功能
 
-### 2. API 日志系统
-
--   ✅ 自动记录所有 API 请求
--   ✅ 记录请求方法、路径、参数
--   ✅ 记录响应状态码、响应时长
--   ✅ 记录用户信息、IP 地址、User Agent
--   ✅ 支持多条件查询和分页
--   ✅ 日志统计功能
--   ✅ 旧日志清理功能
-
-### 3. 中间件
-
--   ✅ 认证中间件：JWT Token 验证
--   ✅ API 日志中间件：自动记录 API 调用
--   ✅ CORS 中间件：跨域支持
+### 3. 中间件系统
+- ✅ **认证中间件**：自动验证JWT Token
+- ✅ **API日志中间件**：自动记录API调用到数据库
+- ✅ **CORS中间件**：跨域支持
 
 ### 4. 配置管理
+- ✅ 支持 DEV/TEST/PROD 三个环境
+- ✅ YAML配置文件 + 环境变量覆盖
+- ✅ 配置项包括：数据库、Redis、JWT、日志、CORS等
 
--   ✅ 多环境配置（DEV/TEST/PROD）
--   ✅ YAML 配置文件
--   ✅ 环境变量覆盖
--   ✅ 配置热加载
+## 🐳 Docker 环境
 
-## 快速开始
+### 开发环境特性
 
-### 1. 环境要求
+- ✅ **代码热更新**：修改代码自动重启应用
+- ✅ **数据持久化**：数据库数据保存在 Docker Volume
+- ✅ **自动初始化**：自动创建数据库表和管理员账号
+- ✅ **调试模式**：启用详细日志和 API 文档
 
--   Python 3.11+
--   PostgreSQL 15+
--   Redis 7+
--   Docker & Docker Compose（可选）
+### 生产环境特性
 
-### 2. 本地开发
+- ✅ **多阶段构建**：优化镜像大小
+- ✅ **非 root 用户**：提高安全性
+- ✅ **Gunicorn + Uvicorn**：4 个 worker 进程
+- ✅ **健康检查**：自动重启失败的服务
+- ✅ **独立端口**：避免与开发环境冲突
 
-#### 安装依赖
+### Docker 管理命令
 
+详细文档请查看：[docker/README.md](docker/README.md)
+
+**开发环境：**
 ```bash
-# 创建虚拟环境
-python -m venv venv
-
-# 激活虚拟环境
-# Windows
-venv\Scripts\activate
 # Linux/Mac
-source venv/bin/activate
+./docker/docker-dev.sh start    # 启动
+./docker/docker-dev.sh logs     # 查看日志
+./docker/docker-dev.sh shell    # 进入容器
+./docker/docker-dev.sh stop     # 停止
 
-# 安装依赖
-pip install -r requirements.txt
+# Windows
+.\docker\docker-dev.ps1 start
+.\docker\docker-dev.ps1 logs
+.\docker\docker-dev.ps1 shell
+.\docker\docker-dev.ps1 stop
 ```
 
-#### 配置数据库
+**生产环境：**
+```bash
+# 1. 配置环境变量
+cp docker/.env.prod.example docker/.env.prod
+nano docker/.env.prod
 
-1. 创建 PostgreSQL 数据库：
-
-```sql
-CREATE DATABASE scaffold_dev;
+# 2. 启动生产环境
+./docker/docker-prod.sh start   # Linux/Mac
+.\docker\docker-prod.ps1 start  # Windows
 ```
 
-2. 修改 `config.yaml` 中的数据库配置
+## 📖 API 文档
 
-#### 运行应用
+启动应用后访问：
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### 主要 API 端点
+
+#### 认证相关
+- `POST /api/v1/auth/login` - 用户登录
+- `POST /api/v1/auth/register` - 用户注册
+- `POST /api/v1/auth/refresh` - 刷新Token
+
+#### 用户管理
+- `GET /api/v1/users/me` - 获取当前用户信息
+- `PUT /api/v1/users/me` - 更新当前用户信息
+- `POST /api/v1/users/me/change-password` - 修改密码
+- `GET /api/v1/users` - 获取用户列表（管理员）
+- `POST /api/v1/users` - 创建用户（管理员）
+- `PUT /api/v1/users/{user_id}` - 更新用户（管理员）
+- `DELETE /api/v1/users/{user_id}` - 删除用户（管理员）
+
+#### API日志
+- `GET /api/v1/logs` - 获取API日志列表（管理员）
+- `GET /api/v1/logs/my/logs` - 获取我的API日志
+- `GET /api/v1/logs/statistics/summary` - 获取日志统计（管理员）
+- `DELETE /api/v1/logs/cleanup` - 清理旧日志（管理员）
+
+## 🗄️ 数据库
+
+### 初始化数据库
+
+**方式一：自动初始化（推荐）**
+```bash
+python init_db.py
+```
+
+**方式二：使用 SQL 文件**
+```bash
+psql -U postgres -d scaffold_dev -f database/init.sql
+```
+
+**方式三：使用 Python 脚本**
+```bash
+python database/create_tables.py
+```
+
+详细文档请查看：[database/README.md](database/README.md)
+
+### 数据库表结构
+
+- **users**: 用户表
+- **api_logs**: API日志表
+
+## 🧪 测试
 
 ```bash
-# 直接运行
-python main.py
+# 运行测试
+pytest
 
-# 或使用uvicorn
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# 生成覆盖率报告
+pytest --cov=app --cov-report=html
 ```
 
-访问：
-
--   API 文档：http://localhost:8000/docs
--   ReDoc 文档：http://localhost:8000/redoc
--   健康检查：http://localhost:8000/health
-
-### 3. Docker 部署
-
-```bash
-# 启动所有服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f app
-
-# 停止服务
-docker-compose down
-
-# 停止并删除数据
-docker-compose down -v
-```
-
-## API 文档
-
-### 认证相关
-
-#### 用户登录
-
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "password"
-}
-```
-
-#### 用户注册
-
-```http
-POST /api/v1/auth/register
-Content-Type: application/json
-
-{
-  "username": "newuser",
-  "email": "user@example.com",
-  "password": "password123",
-  "full_name": "New User"
-}
-```
-
-#### 刷新 Token
-
-```http
-POST /api/v1/auth/refresh
-Content-Type: application/json
-
-{
-  "refresh_token": "your_refresh_token"
-}
-```
-
-### 用户管理
-
-#### 获取当前用户信息
-
-```http
-GET /api/v1/users/me
-Authorization: Bearer {access_token}
-```
-
-#### 获取用户列表（管理员）
-
-```http
-GET /api/v1/users?page=1&page_size=20&keyword=admin
-Authorization: Bearer {access_token}
-```
-
-#### 创建用户（管理员）
-
-```http
-POST /api/v1/users
-Authorization: Bearer {access_token}
-Content-Type: application/json
-
-{
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "password123",
-  "full_name": "Test User",
-  "is_superuser": false
-}
-```
-
-### API 日志
-
-#### 获取 API 日志列表（管理员）
-
-```http
-GET /api/v1/logs?page=1&page_size=20&method=GET&path=/api/users
-Authorization: Bearer {access_token}
-```
-
-#### 获取我的 API 日志
-
-```http
-GET /api/v1/logs/my/logs?page=1&page_size=20
-Authorization: Bearer {access_token}
-```
-
-#### 获取日志统计（管理员）
-
-```http
-GET /api/v1/logs/statistics/summary
-Authorization: Bearer {access_token}
-```
-
-## 配置说明
+## 📝 配置说明
 
 ### config.yaml
 
 配置文件支持三个环境：`dev`、`test`、`prod`
 
-主要配置项：
+```yaml
+environment: DEV  # 当前环境
 
--   `environment`: 当前环境（DEV/TEST/PROD）
--   `app`: 应用配置（名称、端口、调试模式等）
--   `database`: 数据库配置
--   `redis`: Redis 配置
--   `jwt`: JWT 认证配置
--   `logging`: 日志配置
--   `cors`: 跨域配置
--   `api_log`: API 日志配置
+dev:
+  app:
+    name: "General Scaffold Admin System"
+    port: 8000
+  database:
+    host: "localhost"
+    port: 5432
+    username: "postgres"
+    password: "postgres"
+    database: "scaffold_dev"
+  # ... 更多配置
+```
 
 ### 环境变量
 
@@ -284,120 +261,81 @@ export DATABASE_PASSWORD=your-db-password
 export JWT_SECRET_KEY=your-secret-key
 ```
 
-## 开发指南
+## 🔒 安全建议
 
-### 添加新的 API 端点
+### 生产环境
 
-1. 在 `app/api/v1/` 创建新的路由文件
-2. 在 `app/api/v1/__init__.py` 中注册路由
-3. 在 `app/services/` 创建对应的服务层
-4. 在 `app/models/` 创建数据库模型（如需要）
-5. 在 `app/schemas/` 创建 Pydantic Schema
+1. **修改默认密码**
+   - 修改 `docker/.env.prod` 中的所有密码
+   - 修改 `config.yaml` 中的 JWT 密钥
 
-### 数据库迁移
+2. **使用 HTTPS**
+   - 配置 Nginx 反向代理
+   - 申请 SSL 证书
 
-当前项目使用 SQLAlchemy 的 `create_all()` 方法创建表。
+3. **限制端口访问**
+   - 不要暴露数据库端口到公网
+   - 使用防火墙规则
 
-如需使用 Alembic 进行数据库迁移：
+4. **定期备份**
+   ```bash
+   ./docker/docker-prod.sh backup
+   ```
 
-```bash
-# 安装alembic
-pip install alembic
+## 📊 性能优化
 
-# 初始化
-alembic init alembic
+1. **调整 Worker 数量**
+   - 编辑 `docker/docker-compose.prod.yml`
+   - 根据 CPU 核心数调整 workers
 
-# 创建迁移
-alembic revision --autogenerate -m "Initial migration"
+2. **数据库连接池**
+   - 编辑 `config.yaml`
+   - 调整 `pool_size` 和 `max_overflow`
 
-# 执行迁移
-alembic upgrade head
+3. **Redis 持久化**
+   - 配置 AOF 或 RDB
+
+## 🐛 常见问题
+
+### 1. Docker 端口被占用
+
+修改 `docker/docker-compose.dev.yml` 中的端口映射：
+```yaml
+ports:
+  - "8080:8000"  # 改为其他端口
 ```
 
-### 代码规范
+### 2. 数据库连接失败
 
--   使用 Black 格式化代码
--   使用 Flake8 检查代码质量
--   使用 MyPy 进行类型检查
+- 检查 PostgreSQL 服务是否启动
+- 检查 `config.yaml` 中的数据库配置
+- 等待数据库启动完成（通常需要 5-10 秒）
 
-```bash
-# 格式化代码
-black app/
-
-# 检查代码
-flake8 app/
-
-# 类型检查
-mypy app/
-```
-
-## 测试
+### 3. 代码修改不生效（Docker）
 
 ```bash
-# 运行测试
-pytest
+# 重启容器
+./docker/docker-dev.sh restart
 
-# 生成覆盖率报告
-pytest --cov=app --cov-report=html
+# 或重新构建
+./docker/docker-dev.sh rebuild
 ```
 
-## 生产部署建议
+## 📚 相关文档
 
-1. **安全配置**
+- [Docker 使用文档](docker/README.md)
+- [数据库文档](database/README.md)
+- [FastAPI 官方文档](https://fastapi.tiangolo.com/)
+- [SQLAlchemy 文档](https://docs.sqlalchemy.org/)
 
-    - 修改 `config.yaml` 中的 `jwt.secret_key`
-    - 使用强密码
-    - 配置防火墙规则
-    - 启用 HTTPS
-
-2. **性能优化**
-
-    - 调整数据库连接池大小
-    - 配置 Redis 持久化
-    - 使用 Nginx 反向代理
-    - 启用 Gzip 压缩
-
-3. **监控和日志**
-
-    - 配置日志轮转
-    - 集成监控系统（如 Prometheus）
-    - 配置告警规则
-
-4. **备份**
-    - 定期备份数据库
-    - 备份配置文件
-    - 备份日志文件
-
-## 常见问题
-
-### 1. 数据库连接失败
-
-检查：
-
--   PostgreSQL 服务是否启动
--   数据库配置是否正确
--   网络连接是否正常
-
-### 2. Redis 连接失败
-
-检查：
-
--   Redis 服务是否启动
--   Redis 配置是否正确
--   防火墙是否开放端口
-
-### 3. JWT Token 无效
-
-检查：
-
--   Token 是否过期
--   secret_key 是否正确
--   Token 格式是否正确
-
-## 许可证
+## 📄 许可证
 
 MIT License
 
-## 联系方式
+## 👥 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📧 联系方式
 
 如有问题，请提交 Issue 或联系开发团队。

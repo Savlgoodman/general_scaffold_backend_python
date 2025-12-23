@@ -1,0 +1,98 @@
+# 开发环境 Docker Compose 配置
+version: '3.8'
+
+# 项目名称（会显示在 Docker Desktop 中）
+name: general-scaffold-dev
+
+services:
+  # PostgreSQL数据库
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: scaffold_postgres_dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: scaffold_dev
+      TZ: Asia/Shanghai
+    ports:
+      - "12002:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - scaffold_dev_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis缓存
+  redis-dev:
+    image: redis:7-alpine
+    container_name: scaffold_redis_dev
+    command: redis-server --appendonly yes
+    ports:
+      - "12001:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - scaffold_dev_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI应用 - 开发模式
+  app-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    container_name: scaffold_app_dev
+    environment:
+      ENVIRONMENT: DEV
+      DATABASE_HOST: postgres-dev
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: scaffold_dev
+      REDIS_HOST: redis-dev
+      REDIS_PORT: 6379
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂载整个项目目录，实现热更新
+      - ../app:/app/app
+      - ../main.py:/app/main.py
+      - ../config.yaml:/app/config.yaml
+      - ../init_db.py:/app/init_db.py
+      - ../logs:/app/logs
+    networks:
+      - scaffold_dev_network
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo '等待数据库准备就绪...' &&
+        sleep 5 &&
+        echo '初始化数据库...' &&
+        python init_db.py &&
+        echo '启动应用（开发模式 - 热更新）...' &&
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  scaffold_dev_network:
+    driver: bridge
+

@@ -48,14 +48,14 @@ class APILogListResponse(BaseModel):
 # API日志查询参数Schema
 class APILogQuery(BaseModel):
     """API日志查询参数"""
-    method: Optional[str] = Field(None, description="请求方法")
-    path: Optional[str] = Field(None, description="请求路径(模糊查询)")
-    user_id: Optional[int] = Field(None, description="用户ID")
-    username: Optional[str] = Field(None, description="用户名(模糊查询)")
-    status_code: Optional[int] = Field(None, description="响应状态码")
-    start_time: Optional[datetime] = Field(None, description="开始时间")
-    end_time: Optional[datetime] = Field(None, description="结束时间")
-    page: int = Field(1, ge=1, description="页码")
-    page_size: int = Field(20, ge=1, le=100, description="每页数量")
+    method: Optional[str] = None
+    path: Optional[str] = None
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    status_code: Optional[int] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    page: int = 1
+    page_size: int = 20
 
 
