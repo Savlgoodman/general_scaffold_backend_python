@@ -2,7 +2,7 @@
 用户管理API
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -13,8 +13,9 @@ from app.schemas.user import (
 from app.schemas.common import Response, PageResponse
 from app.services.user_service import UserService
 from app.utils.dependencies import get_current_user, get_current_superuser
+from app.utils.query_params import clean_query_params
 
-router = APIRouter(prefix="/users", tags=["用户管理"])
+router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=Response[CurrentUser], summary="获取当前用户信息")
@@ -31,7 +32,7 @@ def get_current_user_info(
     )
 
 
-@router.put("/me", response_model=Response[UserResponse], summary="更新当前用户信息")
+@router.post("/me/update", response_model=Response[UserResponse], summary="更新当前用户信息")
 def update_current_user_info(
     user_in: UserUpdate,
     current_user: User = Depends(get_current_user),
@@ -82,12 +83,12 @@ def change_password(
         )
 
 
-@router.get("", response_model=Response[PageResponse[UserResponse]], summary="获取用户列表")
+@router.get("/list", response_model=Response[PageResponse[UserResponse]], summary="获取用户列表")
 def get_users(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
-    is_active: Optional[bool] = Query(None, description="是否激活"),
+    is_active: Optional[str] = Query(None, description="是否激活"),
     current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
@@ -100,10 +101,15 @@ def get_users(
     
     可选查询条件：
     - keyword: 搜索关键词（用户名、邮箱、全名）
-    - is_active: 是否激活
+    - is_active: 是否激活（true/false）
     """
+    params = clean_query_params(
+        keyword=keyword,
+        is_active=(is_active, bool)
+    )
+    
     skip = (page - 1) * page_size
-    users, total = UserService.get_list(db, skip, page_size, keyword, is_active)
+    users, total = UserService.get_list(db, skip, page_size, params['keyword'], params['is_active'])
     
     return Response(
         code=200,
@@ -117,7 +123,7 @@ def get_users(
     )
 
 
-@router.get("/{user_id}", response_model=Response[UserResponse], summary="获取用户详情")
+@router.get("/detail/{user_id}", response_model=Response[UserResponse], summary="获取用户详情")
 def get_user(
     user_id: int,
     current_user: User = Depends(get_current_superuser),
@@ -140,7 +146,7 @@ def get_user(
     )
 
 
-@router.post("", response_model=Response[UserResponse], summary="创建用户")
+@router.post("/create", response_model=Response[UserResponse], summary="创建用户")
 def create_user(
     user_in: UserCreate,
     current_user: User = Depends(get_current_superuser),
@@ -163,7 +169,7 @@ def create_user(
         )
 
 
-@router.put("/{user_id}", response_model=Response[UserResponse], summary="更新用户")
+@router.post("/update/{user_id}", response_model=Response[UserResponse], summary="更新用户")
 def update_user(
     user_id: int,
     user_in: UserUpdate,
@@ -192,7 +198,7 @@ def update_user(
         )
 
 
-@router.delete("/{user_id}", response_model=Response, summary="删除用户")
+@router.post("/delete/{user_id}", response_model=Response, summary="删除用户")
 def delete_user(
     user_id: int,
     current_user: User = Depends(get_current_superuser),
@@ -220,5 +226,3 @@ def delete_user(
         message="删除成功",
         data=None
     )
-
-

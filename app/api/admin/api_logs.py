@@ -12,31 +12,12 @@ from app.schemas.api_log import APILogResponse, APILogQuery
 from app.schemas.common import Response, PageResponse
 from app.services.api_log_service import APILogService
 from app.utils.dependencies import get_current_user, get_current_superuser
+from app.utils.query_params import clean_query_params
 
-router = APIRouter(prefix="/logs", tags=["API日志"])
-
-
-def parse_int_or_none(value: Optional[str]) -> Optional[int]:
-    """将字符串转换为整数，空字符串或None返回None"""
-    if value is None or value == "":
-        return None
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return None
+router = APIRouter(prefix="/logs", tags=["API logs"])
 
 
-def parse_datetime_or_none(value: Optional[str]) -> Optional[datetime]:
-    """将字符串转换为datetime，空字符串或None返回None"""
-    if value is None or value == "":
-        return None
-    try:
-        return datetime.fromisoformat(value.replace('Z', '+00:00'))
-    except (ValueError, TypeError):
-        return None
-
-
-@router.get("", response_model=Response[PageResponse[APILogResponse]], summary="获取API日志列表")
+@router.get("/list", response_model=Response[PageResponse[APILogResponse]], summary="获取API日志列表")
 def get_api_logs(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -58,29 +39,28 @@ def get_api_logs(
     - page_size: 每页数量
     
     可选查询条件：
-    - 请求方法
-    - 请求路径（模糊查询）
-    - 用户ID
-    - 用户名（模糊查询）
-    - 响应状态码
-    - 时间范围
+    - method: 请求方法
+    - path: 请求路径（模糊查询）
+    - user_id: 用户ID
+    - username: 用户名（模糊查询）
+    - status_code: 响应状态码
+    - start_time: 开始时间
+    - end_time: 结束时间
     """
-    # 处理可能为空字符串的参数
-    parsed_user_id = parse_int_or_none(user_id)
-    parsed_status_code = parse_int_or_none(status_code)
-    parsed_start_time = parse_datetime_or_none(start_time)
-    parsed_end_time = parse_datetime_or_none(end_time)
+    params = clean_query_params(
+        method=method,
+        path=path,
+        user_id=(user_id, int),
+        username=username,
+        status_code=(status_code, int),
+        start_time=(start_time, datetime),
+        end_time=(end_time, datetime)
+    )
     
     query_params = APILogQuery(
         page=page,
         page_size=page_size,
-        method=method if method else None,
-        path=path if path else None,
-        user_id=parsed_user_id,
-        username=username if username else None,
-        status_code=parsed_status_code,
-        start_time=parsed_start_time,
-        end_time=parsed_end_time
+        **params
     )
     
     logs, total = APILogService.get_list(db, query_params)
@@ -97,7 +77,7 @@ def get_api_logs(
     )
 
 
-@router.get("/{log_id}", response_model=Response[APILogResponse], summary="获取API日志详情")
+@router.get("/detail/{log_id}", response_model=Response[APILogResponse], summary="获取API日志详情")
 def get_api_log(
     log_id: int,
     current_user: User = Depends(get_current_superuser),
@@ -120,7 +100,7 @@ def get_api_log(
     )
 
 
-@router.get("/my/logs", response_model=Response[PageResponse[APILogResponse]], summary="获取我的API日志")
+@router.get("/my", response_model=Response[PageResponse[APILogResponse]], summary="获取我的API日志")
 def get_my_api_logs(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
@@ -150,7 +130,7 @@ def get_my_api_logs(
     )
 
 
-@router.get("/statistics/summary", response_model=Response, summary="获取日志统计")
+@router.get("/statistics", response_model=Response, summary="获取日志统计")
 def get_log_statistics(
     start_time: Optional[str] = Query(None, description="开始时间"),
     end_time: Optional[str] = Query(None, description="结束时间"),
@@ -165,10 +145,12 @@ def get_log_statistics(
     - 各状态码统计
     - 平均响应时长
     """
-    parsed_start_time = parse_datetime_or_none(start_time)
-    parsed_end_time = parse_datetime_or_none(end_time)
+    params = clean_query_params(
+        start_time=(start_time, datetime),
+        end_time=(end_time, datetime)
+    )
     
-    stats = APILogService.get_statistics(db, parsed_start_time, parsed_end_time)
+    stats = APILogService.get_statistics(db, params['start_time'], params['end_time'])
     
     return Response(
         code=200,
@@ -177,7 +159,7 @@ def get_log_statistics(
     )
 
 
-@router.delete("/cleanup", response_model=Response, summary="清理旧日志")
+@router.post("/cleanup", response_model=Response, summary="清理旧日志")
 def cleanup_old_logs(
     days: int = Query(30, ge=1, le=365, description="保留最近多少天的日志"),
     current_user: User = Depends(get_current_superuser),
