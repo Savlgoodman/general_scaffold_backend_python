@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+    # PostgreSQL数据库
+    postgres:
+        image: postgres:15-alpine
+        container_name: scaffold_postgres
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: scaffold_dev
+            TZ: Asia/Shanghai
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        networks:
+            - scaffold_network
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Redis缓存
+    redis:
+        image: redis:7-alpine
+        container_name: scaffold_redis
+        command: redis-server --appendonly yes
+        ports:
+            - "12001:6379"
+        volumes:
+            - redis_data:/data
+        networks:
+            - scaffold_network
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # FastAPI应用
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: scaffold_app
+        environment:
+            ENVIRONMENT: DEV
+            DATABASE_HOST: postgres
+            DATABASE_PORT: 5432
+            DATABASE_USERNAME: postgres
+            DATABASE_PASSWORD: postgres
+            DATABASE_NAME: scaffold_dev
+            REDIS_HOST: redis
+            REDIS_PORT: 12001
+        ports:
+            - "8000:8000"
+        volumes:
+            - ./:/app
+            - ./logs:/app/logs
+        networks:
+            - scaffold_network
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        restart: unless-stopped
+        command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+    postgres_data:
+    redis_data:
+
+networks:
+    scaffold_network:
+        driver: bridge
