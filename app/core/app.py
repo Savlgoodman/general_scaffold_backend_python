@@ -75,11 +75,6 @@ def create_app() -> FastAPI:
     # 注册路由
     app.include_router(api_router, prefix="/api")
     
-    # 健康检查
-    @app.get("/health")
-    async def health_check():
-        return {"status": "ok", "environment": settings.environment}
-    
     return app
 
 
