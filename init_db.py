@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from app.core.database import SessionLocal, init_db
 from app.core.security import get_password_hash
-from app.models.user import User
+from app.models.admin_user import AdminUser
 from app.core.logger import app_logger
 
 
@@ -25,14 +25,14 @@ def create_superuser():
     
     try:
         # 检查是否已存在管理员
-        admin = db.query(User).filter(User.username == "admin").first()
+        admin = db.query(AdminUser).filter(AdminUser.username == "admin").first()
         
         if admin:
             app_logger.info("管理员用户已存在")
             return
         
         # 创建管理员用户
-        admin = User(
+        admin = AdminUser(
             username="admin",
             email="admin@example.com",
             hashed_password=get_password_hash("admin123"),

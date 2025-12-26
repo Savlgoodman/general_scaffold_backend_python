@@ -9,16 +9,16 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.redis import get_redis
 from app.core.security import decode_token
-from app.models.user import User
-from app.services.user_service import UserService
+from app.models.admin_user import AdminUser
+from app.services.admin_user_service import AdminUserService
 
 
-def get_current_user(
+def get_current_admin_user(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
-) -> User:
+) -> AdminUser:
     """
-    获取当前登录用户
+    获取当前登录管理员用户
     用于需要认证的API端点
     """
     if not authorization:
@@ -61,8 +61,8 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 查询用户
-    user = UserService.get_by_id(db, user_id)
+    # 查询管理员用户
+    user = AdminUserService.get_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -80,8 +80,8 @@ def get_current_user(
 
 
 def get_current_superuser(
-    current_user: User = Depends(get_current_user)
-) -> User:
+    current_user: AdminUser = Depends(get_current_admin_user)
+) -> AdminUser:
     """
     获取当前超级管理员
     用于需要管理员权限的API端点

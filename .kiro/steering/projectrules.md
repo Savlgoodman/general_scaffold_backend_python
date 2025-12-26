@@ -1,6 +1,5 @@
 ---
-description: 规范要求、接口开发规范、项目总要求、架构要求
-alwaysApply: false
+inclusion: manual
 ---
 
 agent rules

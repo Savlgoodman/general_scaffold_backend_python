@@ -1,14 +1,14 @@
 """
-用户数据库模型
+管理员用户数据库模型
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
 from app.core.database import Base
 
 
-class User(Base):
-    """用户表"""
-    __tablename__ = "users"
+class AdminUser(Base):
+    """管理员用户表"""
+    __tablename__ = "admin_users"
     
     id = Column(Integer, primary_key=True, index=True, comment="用户ID")
     username = Column(String(50), unique=True, index=True, nullable=False, comment="用户名")
@@ -28,6 +28,6 @@ class User(Base):
     remark = Column(Text, comment="备注")
     
     def __repr__(self):
-        return f"<User(id={self.id}, username={self.username})>"
+        return f"<AdminUser(id={self.id}, username={self.username})>"
 
 

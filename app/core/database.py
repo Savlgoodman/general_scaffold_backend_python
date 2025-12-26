@@ -43,7 +43,7 @@ def init_db() -> None:
     创建所有表
     """
     # 导入所有模型，确保它们被注册到Base.metadata
-    from app.models import user, api_log  # noqa
+    from app.models import admin_user, api_log  # noqa
     
     Base.metadata.create_all(bind=engine)
 

@@ -1,16 +1,16 @@
 """
 Pydantic Schemas
 """
-from app.schemas.user import (
-    UserBase,
-    UserCreate,
-    UserUpdate,
-    UserPasswordChange,
-    UserResponse,
-    UserListResponse,
-    UserLogin,
+from app.schemas.admin_user import (
+    AdminUserBase,
+    AdminUserCreate,
+    AdminUserUpdate,
+    AdminUserPasswordChange,
+    AdminUserResponse,
+    AdminUserListResponse,
+    AdminUserLogin,
     TokenResponse,
-    CurrentUser,
+    CurrentAdminUser,
 )
 from app.schemas.api_log import (
     APILogBase,
@@ -22,15 +22,15 @@ from app.schemas.api_log import (
 from app.schemas.common import Response, PageResponse, ErrorResponse
 
 __all__ = [
-    "UserBase",
-    "UserCreate",
-    "UserUpdate",
-    "UserPasswordChange",
-    "UserResponse",
-    "UserListResponse",
-    "UserLogin",
+    "AdminUserBase",
+    "AdminUserCreate",
+    "AdminUserUpdate",
+    "AdminUserPasswordChange",
+    "AdminUserResponse",
+    "AdminUserListResponse",
+    "AdminUserLogin",
     "TokenResponse",
-    "CurrentUser",
+    "CurrentAdminUser",
     "APILogBase",
     "APILogCreate",
     "APILogResponse",

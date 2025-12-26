@@ -1,41 +1,41 @@
 """
-用户服务层
-处理用户相关的业务逻辑
+管理员用户服务层
+处理管理员用户相关的业务逻辑
 """
 from typing import Optional, List
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.models.admin_user import AdminUser
+from app.schemas.admin_user import AdminUserCreate, AdminUserUpdate
 from app.core.security import get_password_hash, verify_password
 from app.core.logger import app_logger
 
 
-class UserService:
-    """用户服务"""
+class AdminUserService:
+    """管理员用户服务"""
     
     @staticmethod
-    def get_by_id(db: Session, user_id: int) -> Optional[User]:
+    def get_by_id(db: Session, user_id: int) -> Optional[AdminUser]:
         """
-        根据ID获取用户
+        根据ID获取管理员用户
         """
-        return db.query(User).filter(User.id == user_id).first()
+        return db.query(AdminUser).filter(AdminUser.id == user_id).first()
     
     @staticmethod
-    def get_by_username(db: Session, username: str) -> Optional[User]:
+    def get_by_username(db: Session, username: str) -> Optional[AdminUser]:
         """
-        根据用户名获取用户
+        根据用户名获取管理员用户
         """
-        return db.query(User).filter(User.username == username).first()
+        return db.query(AdminUser).filter(AdminUser.username == username).first()
     
     @staticmethod
-    def get_by_email(db: Session, email: str) -> Optional[User]:
+    def get_by_email(db: Session, email: str) -> Optional[AdminUser]:
         """
-        根据邮箱获取用户
+        根据邮箱获取管理员用户
         """
-        return db.query(User).filter(User.email == email).first()
+        return db.query(AdminUser).filter(AdminUser.email == email).first()
     
     @staticmethod
     def get_list(
@@ -44,52 +44,52 @@ class UserService:
         limit: int = 20,
         keyword: Optional[str] = None,
         is_active: Optional[bool] = None,
-    ) -> tuple[List[User], int]:
+    ) -> tuple[List[AdminUser], int]:
         """
-        获取用户列表
+        获取管理员用户列表
         
         Returns:
-            (用户列表, 总数)
+            (管理员用户列表, 总数)
         """
-        query = db.query(User)
+        query = db.query(AdminUser)
         
         # 关键词搜索
         if keyword:
             query = query.filter(
                 or_(
-                    User.username.like(f"%{keyword}%"),
-                    User.email.like(f"%{keyword}%"),
-                    User.full_name.like(f"%{keyword}%"),
+                    AdminUser.username.like(f"%{keyword}%"),
+                    AdminUser.email.like(f"%{keyword}%"),
+                    AdminUser.full_name.like(f"%{keyword}%"),
                 )
             )
         
         # 状态筛选
         if is_active is not None:
-            query = query.filter(User.is_active == is_active)
+            query = query.filter(AdminUser.is_active == is_active)
         
         # 获取总数
         total = query.count()
         
         # 分页
-        users = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+        users = query.order_by(AdminUser.created_at.desc()).offset(skip).limit(limit).all()
         
         return users, total
     
     @staticmethod
-    def create(db: Session, user_in: UserCreate) -> User:
+    def create(db: Session, user_in: AdminUserCreate) -> AdminUser:
         """
-        创建用户
+        创建管理员用户
         """
         # 检查用户名是否存在
-        if UserService.get_by_username(db, user_in.username):
+        if AdminUserService.get_by_username(db, user_in.username):
             raise ValueError("用户名已存在")
         
         # 检查邮箱是否存在
-        if UserService.get_by_email(db, user_in.email):
+        if AdminUserService.get_by_email(db, user_in.email):
             raise ValueError("邮箱已存在")
         
-        # 创建用户
-        user = User(
+        # 创建管理员用户
+        user = AdminUser(
             username=user_in.username,
             email=user_in.email,
             hashed_password=get_password_hash(user_in.password),
@@ -105,16 +105,16 @@ class UserService:
         db.commit()
         db.refresh(user)
         
-        app_logger.info(f"创建用户成功: {user.username}")
+        app_logger.info(f"创建管理员用户成功: {user.username}")
         
         return user
     
     @staticmethod
-    def update(db: Session, user_id: int, user_in: UserUpdate) -> Optional[User]:
+    def update(db: Session, user_id: int, user_in: AdminUserUpdate) -> Optional[AdminUser]:
         """
-        更新用户
+        更新管理员用户
         """
-        user = UserService.get_by_id(db, user_id)
+        user = AdminUserService.get_by_id(db, user_id)
         if not user:
             return None
         
@@ -123,7 +123,7 @@ class UserService:
         
         # 检查邮箱是否被其他用户使用
         if "email" in update_data:
-            existing_user = UserService.get_by_email(db, update_data["email"])
+            existing_user = AdminUserService.get_by_email(db, update_data["email"])
             if existing_user and existing_user.id != user_id:
                 raise ValueError("邮箱已被使用")
         
@@ -135,23 +135,23 @@ class UserService:
         db.commit()
         db.refresh(user)
         
-        app_logger.info(f"更新用户成功: {user.username}")
+        app_logger.info(f"更新管理员用户成功: {user.username}")
         
         return user
     
     @staticmethod
     def delete(db: Session, user_id: int) -> bool:
         """
-        删除用户
+        删除管理员用户
         """
-        user = UserService.get_by_id(db, user_id)
+        user = AdminUserService.get_by_id(db, user_id)
         if not user:
             return False
         
         db.delete(user)
         db.commit()
         
-        app_logger.info(f"删除用户成功: {user.username}")
+        app_logger.info(f"删除管理员用户成功: {user.username}")
         
         return True
     
@@ -165,7 +165,7 @@ class UserService:
         """
         修改密码
         """
-        user = UserService.get_by_id(db, user_id)
+        user = AdminUserService.get_by_id(db, user_id)
         if not user:
             return False
         
@@ -179,16 +179,16 @@ class UserService:
         
         db.commit()
         
-        app_logger.info(f"用户修改密码成功: {user.username}")
+        app_logger.info(f"管理员用户修改密码成功: {user.username}")
         
         return True
     
     @staticmethod
-    def authenticate(db: Session, username: str, password: str) -> Optional[User]:
+    def authenticate(db: Session, username: str, password: str) -> Optional[AdminUser]:
         """
-        验证用户登录
+        验证管理员用户登录
         """
-        user = UserService.get_by_username(db, username)
+        user = AdminUserService.get_by_username(db, username)
         if not user:
             return None
         

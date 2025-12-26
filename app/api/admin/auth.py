@@ -8,26 +8,26 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import create_access_token, create_refresh_token, decode_token
-from app.schemas.user import UserLogin, TokenResponse, UserCreate, UserResponse
+from app.schemas.admin_user import AdminUserLogin, TokenResponse, AdminUserCreate, AdminUserResponse
 from app.schemas.common import Response
-from app.services.user_service import UserService
+from app.services.admin_user_service import AdminUserService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=Response[TokenResponse], summary="用户登录")
+@router.post("/login", response_model=Response[TokenResponse], summary="管理员用户登录")
 def login(
-    user_in: UserLogin,
+    user_in: AdminUserLogin,
     db: Session = Depends(get_db)
 ):
     """
-    用户登录
+    管理员用户登录
     
     - **username**: 用户名
     - **password**: 密码
     """
-    # 验证用户
-    user = UserService.authenticate(db, user_in.username, user_in.password)
+    # 验证管理员用户
+    user = AdminUserService.authenticate(db, user_in.username, user_in.password)
     
     if not user:
         raise HTTPException(
@@ -55,13 +55,13 @@ def login(
     )
 
 
-@router.post("/register", response_model=Response[UserResponse], summary="用户注册")
+@router.post("/register", response_model=Response[AdminUserResponse], summary="管理员用户注册")
 def register(
-    user_in: UserCreate,
+    user_in: AdminUserCreate,
     db: Session = Depends(get_db)
 ):
     """
-    用户注册
+    管理员用户注册
     
     - **username**: 用户名
     - **email**: 邮箱
@@ -71,12 +71,12 @@ def register(
         # 注册时不允许设置为超级管理员
         user_in.is_superuser = False
         
-        user = UserService.create(db, user_in)
+        user = AdminUserService.create(db, user_in)
         
         return Response(
             code=200,
             message="注册成功",
-            data=UserResponse.model_validate(user)
+            data=AdminUserResponse.model_validate(user)
         )
     except ValueError as e:
         raise HTTPException(
@@ -104,9 +104,9 @@ def refresh_token(
             detail="无效的刷新令牌",
         )
     
-    # 验证用户是否存在
+    # 验证管理员用户是否存在
     user_id = payload.get("user_id")
-    user = UserService.get_by_id(db, user_id)
+    user = AdminUserService.get_by_id(db, user_id)
     
     if not user or not user.is_active:
         raise HTTPException(

@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.user import User
+from app.models.admin_user import AdminUser
 from app.schemas.api_log import APILogResponse, APILogQuery
 from app.schemas.common import Response, PageResponse
 from app.services.api_log_service import APILogService
-from app.utils.dependencies import get_current_user, get_current_superuser
+from app.utils.dependencies import get_current_admin_user, get_current_superuser
 from app.utils.query_params import clean_query_params
 
 router = APIRouter(prefix="/logs", tags=["API logs"])
@@ -28,7 +28,7 @@ def get_api_logs(
     status_code: Optional[str] = Query(None, description="响应状态码"),
     start_time: Optional[str] = Query(None, description="开始时间"),
     end_time: Optional[str] = Query(None, description="结束时间"),
-    current_user: User = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
@@ -80,7 +80,7 @@ def get_api_logs(
 @router.get("/detail/{log_id}", response_model=Response[APILogResponse], summary="获取API日志详情")
 def get_api_log(
     log_id: int,
-    current_user: User = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
@@ -104,11 +104,11 @@ def get_api_log(
 def get_my_api_logs(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
-    current_user: User = Depends(get_current_user),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
-    获取当前用户的API日志
+    获取当前管理员用户的API日志
     """
     query_params = APILogQuery(
         user_id=current_user.id,
@@ -134,7 +134,7 @@ def get_my_api_logs(
 def get_log_statistics(
     start_time: Optional[str] = Query(None, description="开始时间"),
     end_time: Optional[str] = Query(None, description="结束时间"),
-    current_user: User = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
@@ -162,7 +162,7 @@ def get_log_statistics(
 @router.post("/cleanup", response_model=Response, summary="清理旧日志")
 def cleanup_old_logs(
     days: int = Query(30, ge=1, le=365, description="保留最近多少天的日志"),
-    current_user: User = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_superuser),
     db: Session = Depends(get_db)
 ):
     """
