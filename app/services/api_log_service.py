@@ -3,9 +3,9 @@ API日志服务层
 处理API日志相关的业务逻辑
 """
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 
 from app.models.api_log import APILog
 from app.schemas.api_log import APILogQuery
@@ -19,7 +19,10 @@ class APILogService:
         """
         根据ID获取日志
         """
-        return db.query(APILog).filter(APILog.id == log_id).first()
+        return db.query(APILog).filter(
+            APILog.id == log_id,
+            APILog.is_deleted == False
+        ).first()
     
     @staticmethod
     def get_list(
@@ -32,7 +35,7 @@ class APILogService:
         Returns:
             (日志列表, 总数)
         """
-        query = db.query(APILog)
+        query = db.query(APILog).filter(APILog.is_deleted == False)
         
         # 构建查询条件
         conditions = []
@@ -74,7 +77,7 @@ class APILogService:
     @staticmethod
     def delete_old_logs(db: Session, days: int = 30) -> int:
         """
-        删除旧日志
+        逻辑删除旧日志
         
         Args:
             days: 保留最近多少天的日志
@@ -82,9 +85,13 @@ class APILogService:
         Returns:
             删除的日志数量
         """
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
         
-        count = db.query(APILog).filter(APILog.created_at < cutoff_date).delete()
+        # 逻辑删除
+        count = db.query(APILog).filter(
+            APILog.created_at < cutoff_date,
+            APILog.is_deleted == False
+        ).update({"is_deleted": True, "updated_at": datetime.now(timezone.utc)})
         db.commit()
         
         return count
@@ -98,7 +105,7 @@ class APILogService:
         """
         获取统计信息
         """
-        query = db.query(APILog)
+        query = db.query(APILog).filter(APILog.is_deleted == False)
         
         if start_time:
             query = query.filter(APILog.created_at >= start_time)
@@ -115,19 +122,18 @@ class APILogService:
             status_stats[status_code] = count
         
         # 平均响应时长
-        avg_duration = db.query(func.avg(APILog.duration)).filter(
-            APILog.created_at >= start_time if start_time else True,
-            APILog.created_at <= end_time if end_time else True
-        ).scalar() or 0
+        avg_duration_query = db.query(func.avg(APILog.duration)).filter(APILog.is_deleted == False)
+        if start_time:
+            avg_duration_query = avg_duration_query.filter(APILog.created_at >= start_time)
+        if end_time:
+            avg_duration_query = avg_duration_query.filter(APILog.created_at <= end_time)
+        
+        avg_duration = avg_duration_query.scalar() or 0
         
         return {
             "total": total,
             "status_stats": status_stats,
             "avg_duration": round(avg_duration, 3)
         }
-
-
-from datetime import timedelta
-from sqlalchemy import func
 
 

@@ -3,7 +3,7 @@
 处理管理员用户相关的业务逻辑
 """
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -21,21 +21,30 @@ class AdminUserService:
         """
         根据ID获取管理员用户
         """
-        return db.query(AdminUser).filter(AdminUser.id == user_id).first()
+        return db.query(AdminUser).filter(
+            AdminUser.id == user_id,
+            AdminUser.is_deleted == False
+        ).first()
     
     @staticmethod
     def get_by_username(db: Session, username: str) -> Optional[AdminUser]:
         """
         根据用户名获取管理员用户
         """
-        return db.query(AdminUser).filter(AdminUser.username == username).first()
+        return db.query(AdminUser).filter(
+            AdminUser.username == username,
+            AdminUser.is_deleted == False
+        ).first()
     
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[AdminUser]:
         """
         根据邮箱获取管理员用户
         """
-        return db.query(AdminUser).filter(AdminUser.email == email).first()
+        return db.query(AdminUser).filter(
+            AdminUser.email == email,
+            AdminUser.is_deleted == False
+        ).first()
     
     @staticmethod
     def get_list(
@@ -51,7 +60,7 @@ class AdminUserService:
         Returns:
             (管理员用户列表, 总数)
         """
-        query = db.query(AdminUser)
+        query = db.query(AdminUser).filter(AdminUser.is_deleted == False)
         
         # 关键词搜索
         if keyword:
@@ -130,7 +139,7 @@ class AdminUserService:
         for field, value in update_data.items():
             setattr(user, field, value)
         
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         db.refresh(user)
@@ -142,16 +151,17 @@ class AdminUserService:
     @staticmethod
     def delete(db: Session, user_id: int) -> bool:
         """
-        删除管理员用户
+        逻辑删除管理员用户
         """
         user = AdminUserService.get_by_id(db, user_id)
         if not user:
             return False
         
-        db.delete(user)
+        user.is_deleted = True
+        user.updated_at = datetime.now(timezone.utc)
         db.commit()
         
-        app_logger.info(f"删除管理员用户成功: {user.username}")
+        app_logger.info(f"逻辑删除管理员用户成功: {user.username}")
         
         return True
     
@@ -175,7 +185,7 @@ class AdminUserService:
         
         # 更新密码
         user.hashed_password = get_password_hash(new_password)
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(timezone.utc)
         
         db.commit()
         
@@ -198,8 +208,12 @@ class AdminUserService:
         if not user.is_active:
             return None
         
+        # 检查是否已被删除
+        if user.is_deleted:
+            return None
+        
         # 更新最后登录时间
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         db.commit()
         
         return user

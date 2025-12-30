@@ -22,10 +22,10 @@ class AdminUser(Base):
     is_superuser = Column(Boolean, default=False, comment="是否超级管理员")
     
     last_login = Column(DateTime, comment="最后登录时间")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
     
     remark = Column(Text, comment="备注")
+    
+    # created_at, updated_at, is_deleted 字段由 Base 基类自动提供
     
     def __repr__(self):
         return f"<AdminUser(id={self.id}, username={self.username})>"

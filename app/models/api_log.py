@@ -33,8 +33,7 @@ class APILog(Base):
     ip_address = Column(String(50), comment="IP地址")
     user_agent = Column(String(500), comment="User Agent")
     
-    # 时间信息
-    created_at = Column(DateTime, default=datetime.utcnow, index=True, comment="请求时间")
+    # created_at, updated_at, is_deleted 字段由 Base 基类自动提供
     
     def __repr__(self):
         return f"<APILog(id={self.id}, method={self.method}, path={self.path})>"
