@@ -70,7 +70,18 @@ def init_db() -> None:
     创建所有表
     """
     # 导入所有模型，确保它们被注册到Base.metadata
-    from app.models import admin_user, api_log  # noqa
+    from app.models import (  # noqa
+        admin_user, 
+        api_log,
+        admin_role,
+        admin_permission,
+        admin_menu,
+        admin_user_role,
+        admin_role_permission,
+        admin_role_menu,
+        admin_user_permission_override,
+        admin_user_menu_override,
+    )
     
     Base.metadata.create_all(bind=engine)
 

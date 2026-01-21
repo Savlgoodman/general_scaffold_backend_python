@@ -114,6 +114,11 @@ class AdminUserService:
         db.commit()
         db.refresh(user)
         
+        # 分配角色
+        if user_in.role_ids:
+            from app.services.admin_rbac_service import AdminRBACService
+            AdminRBACService.assign_user_roles(db, user.id, user_in.role_ids)
+        
         app_logger.info(f"创建管理员用户成功: {user.username}")
         
         return user

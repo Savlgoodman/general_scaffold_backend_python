@@ -9,13 +9,16 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import create_access_token, create_refresh_token, decode_token
 from app.schemas.admin_user import AdminUserLogin, TokenResponse, AdminUserCreate, AdminUserResponse
+from app.schemas.admin_auth import LoginResponse
 from app.schemas.common import Response
 from app.services.admin_user_service import AdminUserService
+from app.services.admin_rbac_service import AdminRBACService
+from app.services.admin_menu_service import AdminMenuService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", response_model=Response[TokenResponse], summary="管理员用户登录")
+@router.post("/login", response_model=Response[LoginResponse], summary="管理员用户登录")
 def login(
     user_in: AdminUserLogin,
     db: Session = Depends(get_db)
@@ -25,6 +28,11 @@ def login(
     
     - **username**: 用户名
     - **password**: 密码
+    
+    返回数据包含：
+    - access_token: 访问令牌
+    - refresh_token: 刷新令牌
+    - menus: 用户菜单权限树（超级管理员返回所有激活菜单）
     """
     # 验证管理员用户
     user = AdminUserService.authenticate(db, user_in.username, user_in.password)
@@ -45,12 +53,25 @@ def login(
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     
+    # 获取用户菜单权限
+    if user.is_superuser:
+        # 超级管理员获取所有激活的菜单
+        menus = AdminMenuService.get_menu_tree(db, status=1)
+    else:
+        # 普通用户获取角色对应的菜单
+        menus = AdminRBACService.get_user_menus(db, user.id)
+    
     return Response(
         code=200,
         message="登录成功",
-        data=TokenResponse(
+        data=LoginResponse(
             access_token=access_token,
             refresh_token=refresh_token,
+            token_type="bearer",
+            user_id=user.id,
+            username=user.username,
+            is_superuser=user.is_superuser,
+            menus=menus
         )
     )
 
@@ -132,5 +153,3 @@ def refresh_token(
             refresh_token=new_refresh_token,
         )
     )
-
-

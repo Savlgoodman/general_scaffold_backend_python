@@ -8,10 +8,18 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.admin_user import AdminUser
 from app.schemas.admin_user import (
-    AdminUserCreate, AdminUserUpdate, AdminUserResponse, AdminUserPasswordChange, CurrentAdminUser
+    AdminUserCreate, AdminUserUpdate, AdminUserResponse, AdminUserPasswordChange, 
+    CurrentAdminUser, AdminUserAssignRoles
+)
+from app.schemas.admin_user_permission_override import (
+    AdminUserPermissionOverrideResponse, AdminUserPermissionOverrideBatchCreate
+)
+from app.schemas.admin_user_menu_override import (
+    AdminUserMenuOverrideResponse, AdminUserMenuOverrideBatchCreate
 )
 from app.schemas.common import Response, PageResponse
 from app.services.admin_user_service import AdminUserService
+from app.services.admin_rbac_service import AdminRBACService
 from app.utils.dependencies import get_current_admin_user, get_current_superuser
 from app.utils.query_params import clean_query_params
 
@@ -225,4 +233,145 @@ def delete_admin_user(
         code=200,
         message="删除成功",
         data=None
+    )
+
+
+@router.post("/assign-roles/{user_id}", response_model=Response, summary="为用户分配角色")
+def assign_roles(
+    user_id: int,
+    data: AdminUserAssignRoles,
+    current_user: AdminUser = Depends(get_current_superuser),
+    db: Session = Depends(get_db)
+):
+    """
+    为用户分配角色（需要超级管理员权限）
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    AdminRBACService.assign_user_roles(db, user_id, data.role_ids)
+    
+    return Response(
+        code=200,
+        message="分配角色成功",
+        data=None
+    )
+
+
+@router.get("/roles/{user_id}", response_model=Response[list[int]], summary="获取用户的角色列表")
+def get_user_roles(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_superuser),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户的角色ID列表（需要超级管理员权限）
+    """
+    role_ids = AdminRBACService.get_user_roles(db, user_id)
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=role_ids
+    )
+
+
+@router.post("/permission-overrides/{user_id}", response_model=Response, summary="批量设置用户权限覆盖")
+def set_permission_overrides(
+    user_id: int,
+    data: AdminUserPermissionOverrideBatchCreate,
+    current_user: AdminUser = Depends(get_current_superuser),
+    db: Session = Depends(get_db)
+):
+    """
+    批量设置用户权限覆盖（需要超级管理员权限）
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    for override in data.overrides:
+        AdminRBACService.set_user_permission_overrides(
+            db, user_id, override.permission_id, override.effect
+        )
+    
+    return Response(
+        code=200,
+        message="设置权限覆盖成功",
+        data=None
+    )
+
+
+@router.get("/permission-overrides/{user_id}", response_model=Response[list[AdminUserPermissionOverrideResponse]], summary="获取用户权限覆盖列表")
+def get_permission_overrides(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_superuser),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户权限覆盖列表（需要超级管理员权限）
+    """
+    overrides = AdminRBACService.get_user_permission_overrides(db, user_id)
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=[AdminUserPermissionOverrideResponse.model_validate(o) for o in overrides]
+    )
+
+
+@router.post("/menu-overrides/{user_id}", response_model=Response, summary="批量设置用户菜单覆盖")
+def set_menu_overrides(
+    user_id: int,
+    data: AdminUserMenuOverrideBatchCreate,
+    current_user: AdminUser = Depends(get_current_superuser),
+    db: Session = Depends(get_db)
+):
+    """
+    批量设置用户菜单覆盖（需要超级管理员权限）
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    for override in data.overrides:
+        AdminRBACService.set_user_menu_overrides(
+            db, user_id, override.menu_id, override.effect
+        )
+    
+    return Response(
+        code=200,
+        message="设置菜单覆盖成功",
+        data=None
+    )
+
+
+@router.get("/menu-overrides/{user_id}", response_model=Response[list[AdminUserMenuOverrideResponse]], summary="获取用户菜单覆盖列表")
+def get_menu_overrides(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_superuser),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户菜单覆盖列表（需要超级管理员权限）
+    """
+    overrides = AdminRBACService.get_user_menu_overrides(db, user_id)
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=[AdminUserMenuOverrideResponse.model_validate(o) for o in overrides]
     )
