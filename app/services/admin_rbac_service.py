@@ -2,7 +2,7 @@
 管理员RBAC权限服务层
 处理用户权限验证相关的业务逻辑
 """
-from typing import List, Set
+from typing import List, Set, Optional
 from sqlalchemy.orm import Session
 
 from app.models.admin_user_role import AdminUserRole
@@ -281,6 +281,110 @@ class AdminRBACService:
         db.commit()
         
         return True
+    
+    @staticmethod
+    def clear_all_permission_overrides(db: Session, admin_user_id: int) -> bool:
+        """清除用户的所有权限覆盖"""
+        from datetime import datetime, timezone
+        
+        # 软删除所有该用户的权限覆盖记录
+        result = db.query(AdminUserPermissionOverride).filter(
+            AdminUserPermissionOverride.admin_user_id == admin_user_id,
+            AdminUserPermissionOverride.is_deleted == False
+        ).update({"is_deleted": True, "updated_at": datetime.now(timezone.utc)})
+        
+        db.commit()
+        
+        app_logger.info(f"清除用户 {admin_user_id} 的所有权限覆盖成功，共清除 {result} 条记录")
+        
+        return True
+    
+    @staticmethod
+    def clear_all_menu_overrides(db: Session, admin_user_id: int) -> bool:
+        """清除用户的所有菜单覆盖"""
+        from datetime import datetime, timezone
+        
+        # 软删除所有该用户的菜单覆盖记录
+        result = db.query(AdminUserMenuOverride).filter(
+            AdminUserMenuOverride.admin_user_id == admin_user_id,
+            AdminUserMenuOverride.is_deleted == False
+        ).update({"is_deleted": True, "updated_at": datetime.now(timezone.utc)})
+        
+        db.commit()
+        
+        app_logger.info(f"清除用户 {admin_user_id} 的所有菜单覆盖成功，共清除 {result} 条记录")
+        
+        return True
+    
+    @staticmethod
+    def get_user_complete_permissions(
+        db: Session,
+        admin_user_id: int,
+        skip: int,
+        limit: int,
+        keyword: Optional[str] = None
+    ) -> tuple[List[AdminPermission], int]:
+        """
+        获取用户的完整权限列表（分页）
+        逻辑：
+        1. 获取用户所有角色的权限（取并集）
+        2. 应用用户权限覆盖表（ALLOW添加，DENY删除）
+        3. 只返回激活的权限
+        4. 支持关键词搜索
+        """
+        # 1. 获取用户的角色
+        role_ids = AdminRBACService.get_user_roles(db, admin_user_id)
+        
+        if not role_ids:
+            permission_ids = set()
+        else:
+            # 2. 获取角色的权限（取并集）
+            role_permissions = db.query(AdminRolePermission).filter(
+                AdminRolePermission.role_id.in_(role_ids),
+                AdminRolePermission.is_deleted == False
+            ).all()
+            
+            permission_ids = set([rp.permission_id for rp in role_permissions])
+        
+        # 3. 应用用户权限覆盖
+        overrides = db.query(AdminUserPermissionOverride).filter(
+            AdminUserPermissionOverride.admin_user_id == admin_user_id,
+            AdminUserPermissionOverride.is_deleted == False
+        ).all()
+        
+        for override in overrides:
+            if override.effect == EffectType.ALLOW:
+                permission_ids.add(override.permission_id)
+            elif override.effect == EffectType.DENY:
+                permission_ids.discard(override.permission_id)
+        
+        # 4. 构建查询（只获取激活的权限）
+        if not permission_ids:
+            return [], 0
+        
+        query = db.query(AdminPermission).filter(
+            AdminPermission.id.in_(permission_ids),
+            AdminPermission.is_deleted == False,
+            AdminPermission.status == 1
+        )
+        
+        # 5. 关键词搜索
+        if keyword:
+            from sqlalchemy import or_
+            query = query.filter(
+                or_(
+                    AdminPermission.name.like(f"%{keyword}%"),
+                    AdminPermission.api_path.like(f"%{keyword}%")
+                )
+            )
+        
+        # 6. 获取总数
+        total = query.count()
+        
+        # 7. 分页
+        permissions = query.order_by(AdminPermission.id.asc()).offset(skip).limit(limit).all()
+        
+        return permissions, total
 
 
 

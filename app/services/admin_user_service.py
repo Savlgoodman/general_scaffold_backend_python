@@ -222,5 +222,26 @@ class AdminUserService:
         db.commit()
         
         return user
+    
+    @staticmethod
+    def toggle_status(db: Session, user_id: int, is_active: bool) -> Optional[AdminUser]:
+        """
+        切换用户启用状态
+        """
+        user = AdminUserService.get_by_id(db, user_id)
+        if not user:
+            return None
+        
+        # 更新状态
+        user.is_active = is_active
+        user.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(user)
+        
+        status_text = "启用" if is_active else "禁用"
+        app_logger.info(f"{status_text}管理员用户成功: {user.username}")
+        
+        return user
 
 

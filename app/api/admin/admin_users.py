@@ -17,6 +17,8 @@ from app.schemas.admin_user_permission_override import (
 from app.schemas.admin_user_menu_override import (
     AdminUserMenuOverrideResponse, AdminUserMenuOverrideBatchCreate
 )
+from app.schemas.admin_menu import AdminMenuTreeNode
+from app.schemas.admin_permission import AdminPermissionResponse
 from app.schemas.common import Response, PageResponse
 from app.services.admin_user_service import AdminUserService
 from app.services.admin_rbac_service import AdminRBACService
@@ -374,4 +376,162 @@ def get_menu_overrides(
         code=200,
         message="获取成功",
         data=[AdminUserMenuOverrideResponse.model_validate(o) for o in overrides]
+    )
+
+
+@router.post("/clear-permission-overrides/{user_id}", response_model=Response, summary="清除用户所有权限覆盖")
+def clear_permission_overrides(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    清除用户的所有权限覆盖（需要超级管理员权限）
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    AdminRBACService.clear_all_permission_overrides(db, user_id)
+    
+    return Response(
+        code=200,
+        message="清除权限覆盖成功",
+        data=None
+    )
+
+
+@router.post("/clear-menu-overrides/{user_id}", response_model=Response, summary="清除用户所有菜单覆盖")
+def clear_menu_overrides(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    清除用户的所有菜单覆盖（需要超级管理员权限）
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    AdminRBACService.clear_all_menu_overrides(db, user_id)
+    
+    return Response(
+        code=200,
+        message="清除菜单覆盖成功",
+        data=None
+    )
+
+
+@router.get("/complete-menus/{user_id}", response_model=Response[list[AdminMenuTreeNode]], summary="获取用户完整菜单")
+def get_complete_menus(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户的完整菜单（角色菜单并集 + 覆盖）（需要超级管理员权限）
+    复用登录时返回给前端的菜单表逻辑
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    # 复用 AdminRBACService.get_user_menus 方法
+    menus = AdminRBACService.get_user_menus(db, user_id)
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=menus
+    )
+
+
+@router.get("/complete-permissions/{user_id}", response_model=Response[PageResponse[AdminPermissionResponse]], summary="获取用户完整权限列表")
+def get_complete_permissions(
+    user_id: int,
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户的完整权限列表（角色权限并集 + 覆盖）（需要超级管理员权限）
+    
+    必传参数：
+    - page: 页码
+    - page_size: 每页数量
+    
+    可选查询条件：
+    - keyword: 搜索关键词（权限名称、API路径）
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    params = clean_query_params(keyword=keyword)
+    
+    skip = (page - 1) * page_size
+    permissions, total = AdminRBACService.get_user_complete_permissions(
+        db, user_id, skip, page_size, params['keyword']
+    )
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=PageResponse(
+            total=total,
+            page=page,
+            page_size=page_size,
+            items=[AdminPermissionResponse.model_validate(p) for p in permissions]
+        )
+    )
+
+
+@router.post("/toggle-status/{user_id}", response_model=Response, summary="调整用户启用状态")
+def toggle_user_status(
+    user_id: int,
+    is_active: bool = Body(..., embed=True, description="是否启用"),
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    启用或禁用管理员用户账户（需要超级管理员权限）
+    """
+    # 不能禁用自己的账户
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不能禁用自己的账户"
+        )
+    
+    user = AdminUserService.toggle_status(db, user_id, is_active)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    status_text = "启用" if is_active else "禁用"
+    return Response(
+        code=200,
+        message=f"{status_text}用户成功",
+        data=None
     )

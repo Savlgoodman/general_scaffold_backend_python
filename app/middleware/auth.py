@@ -71,6 +71,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.username = username
         request.state.is_superuser = is_superuser
         
+        # 检查用户是否被禁用
+        from app.core.database import SessionLocal
+        from app.services.admin_user_service import AdminUserService
+        
+        db = SessionLocal()
+        try:
+            user = AdminUserService.get_by_id(db, user_id)
+            if user and not user.is_active:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"code": 401, "message": "账户已被禁用", "data": None}
+                )
+        finally:
+            db.close()
+        
         # 超级管理员跳过权限验证
         if not is_superuser:
             # 验证API权限
