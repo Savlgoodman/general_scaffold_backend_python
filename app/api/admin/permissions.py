@@ -12,7 +12,7 @@ from app.schemas.admin_permission import (
 )
 from app.schemas.common import Response, PageResponse
 from app.services.admin_permission_service import AdminPermissionService
-from app.utils.dependencies import get_current_superuser
+from app.utils.dependencies import get_current_admin_user
 from app.utils.query_params import clean_query_params
 
 router = APIRouter(prefix="/permissions", tags=["permissions"])
@@ -21,10 +21,10 @@ router = APIRouter(prefix="/permissions", tags=["permissions"])
 @router.get("/list", response_model=Response[PageResponse[AdminPermissionResponse]], summary="获取权限列表")
 def get_permissions(
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    page_size: int = Query(20, ge=1, le=10000, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[str] = Query(None, description="状态"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -61,7 +61,7 @@ def get_permissions(
 @router.get("/detail/{permission_id}", response_model=Response[AdminPermissionResponse], summary="获取权限详情")
 def get_permission(
     permission_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -84,7 +84,7 @@ def get_permission(
 @router.post("/create", response_model=Response[AdminPermissionResponse], summary="创建权限")
 def create_permission(
     permission_in: AdminPermissionCreate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -108,7 +108,7 @@ def create_permission(
 def update_permission(
     permission_id: int,
     permission_in: AdminPermissionUpdate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -136,7 +136,7 @@ def update_permission(
 @router.post("/delete/{permission_id}", response_model=Response, summary="删除权限")
 def delete_permission(
     permission_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """

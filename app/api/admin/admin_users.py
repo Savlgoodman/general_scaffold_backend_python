@@ -20,7 +20,7 @@ from app.schemas.admin_user_menu_override import (
 from app.schemas.common import Response, PageResponse
 from app.services.admin_user_service import AdminUserService
 from app.services.admin_rbac_service import AdminRBACService
-from app.utils.dependencies import get_current_admin_user, get_current_superuser
+from app.utils.dependencies import get_current_admin_user, get_current_admin_user
 from app.utils.query_params import clean_query_params
 
 router = APIRouter(prefix="/admin_users", tags=["admin users"])
@@ -97,7 +97,7 @@ def get_admin_users(
     page_size: int = Query(20, ge=1, le=100, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     is_active: Optional[str] = Query(None, description="是否激活"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -134,7 +134,7 @@ def get_admin_users(
 @router.get("/detail/{user_id}", response_model=Response[AdminUserResponse], summary="获取管理员用户详情")
 def get_admin_user(
     user_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -157,7 +157,7 @@ def get_admin_user(
 @router.post("/create", response_model=Response[AdminUserResponse], summary="创建管理员用户")
 def create_admin_user(
     user_in: AdminUserCreate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -181,7 +181,7 @@ def create_admin_user(
 def update_admin_user(
     user_id: int,
     user_in: AdminUserUpdate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -209,7 +209,7 @@ def update_admin_user(
 @router.post("/delete/{user_id}", response_model=Response, summary="删除管理员用户")
 def delete_admin_user(
     user_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -240,7 +240,7 @@ def delete_admin_user(
 def assign_roles(
     user_id: int,
     data: AdminUserAssignRoles,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -266,7 +266,7 @@ def assign_roles(
 @router.get("/roles/{user_id}", response_model=Response[list[int]], summary="获取用户的角色列表")
 def get_user_roles(
     user_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -285,7 +285,7 @@ def get_user_roles(
 def set_permission_overrides(
     user_id: int,
     data: AdminUserPermissionOverrideBatchCreate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -314,7 +314,7 @@ def set_permission_overrides(
 @router.get("/permission-overrides/{user_id}", response_model=Response[list[AdminUserPermissionOverrideResponse]], summary="获取用户权限覆盖列表")
 def get_permission_overrides(
     user_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -333,7 +333,7 @@ def get_permission_overrides(
 def set_menu_overrides(
     user_id: int,
     data: AdminUserMenuOverrideBatchCreate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -362,7 +362,7 @@ def set_menu_overrides(
 @router.get("/menu-overrides/{user_id}", response_model=Response[list[AdminUserMenuOverrideResponse]], summary="获取用户菜单覆盖列表")
 def get_menu_overrides(
     user_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """

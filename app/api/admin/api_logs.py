@@ -11,7 +11,7 @@ from app.models.admin_user import AdminUser
 from app.schemas.api_log import APILogResponse, APILogQuery
 from app.schemas.common import Response, PageResponse
 from app.services.api_log_service import APILogService
-from app.utils.dependencies import get_current_admin_user, get_current_superuser
+from app.utils.dependencies import get_current_admin_user, get_current_admin_user
 from app.utils.query_params import clean_query_params
 
 router = APIRouter(prefix="/logs", tags=["API logs"])
@@ -28,7 +28,7 @@ def get_api_logs(
     status_code: Optional[str] = Query(None, description="响应状态码"),
     start_time: Optional[str] = Query(None, description="开始时间"),
     end_time: Optional[str] = Query(None, description="结束时间"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -80,7 +80,7 @@ def get_api_logs(
 @router.get("/detail/{log_id}", response_model=Response[APILogResponse], summary="获取API日志详情")
 def get_api_log(
     log_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -134,7 +134,7 @@ def get_my_api_logs(
 def get_log_statistics(
     start_time: Optional[str] = Query(None, description="开始时间"),
     end_time: Optional[str] = Query(None, description="结束时间"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -162,7 +162,7 @@ def get_log_statistics(
 @router.post("/cleanup", response_model=Response, summary="清理旧日志")
 def cleanup_old_logs(
     days: int = Query(30, ge=1, le=365, description="保留最近多少天的日志"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """

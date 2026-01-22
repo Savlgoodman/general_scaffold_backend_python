@@ -13,7 +13,7 @@ from app.schemas.admin_role import (
 )
 from app.schemas.common import Response, PageResponse
 from app.services.admin_role_service import AdminRoleService
-from app.utils.dependencies import get_current_superuser
+from app.utils.dependencies import get_current_admin_user
 from app.utils.query_params import clean_query_params
 
 router = APIRouter(prefix="/roles", tags=["roles"])
@@ -22,10 +22,10 @@ router = APIRouter(prefix="/roles", tags=["roles"])
 @router.get("/list", response_model=Response[PageResponse[AdminRoleResponse]], summary="获取角色列表")
 def get_roles(
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    page_size: int = Query(20, ge=1, le=10000, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[str] = Query(None, description="状态"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -62,7 +62,7 @@ def get_roles(
 @router.get("/detail/{role_id}", response_model=Response[AdminRoleResponse], summary="获取角色详情")
 def get_role(
     role_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -85,7 +85,7 @@ def get_role(
 @router.post("/create", response_model=Response[AdminRoleResponse], summary="创建角色")
 def create_role(
     role_in: AdminRoleCreate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -109,7 +109,7 @@ def create_role(
 def update_role(
     role_id: int,
     role_in: AdminRoleUpdate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -137,7 +137,7 @@ def update_role(
 @router.post("/delete/{role_id}", response_model=Response, summary="删除角色")
 def delete_role(
     role_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -161,7 +161,7 @@ def delete_role(
 def assign_permissions(
     role_id: int,
     data: AdminRoleAssignPermissions,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -185,7 +185,7 @@ def assign_permissions(
 def assign_menus(
     role_id: int,
     data: AdminRoleAssignMenus,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -208,7 +208,7 @@ def assign_menus(
 @router.get("/permissions/{role_id}", response_model=Response[list[int]], summary="获取角色的权限列表")
 def get_role_permissions(
     role_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -226,7 +226,7 @@ def get_role_permissions(
 @router.get("/menus/{role_id}", response_model=Response[list[int]], summary="获取角色的菜单列表")
 def get_role_menus(
     role_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """

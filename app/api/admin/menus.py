@@ -12,7 +12,7 @@ from app.schemas.admin_menu import (
 )
 from app.schemas.common import Response, PageResponse
 from app.services.admin_menu_service import AdminMenuService
-from app.utils.dependencies import get_current_superuser
+from app.utils.dependencies import get_current_admin_user
 from app.utils.query_params import clean_query_params
 
 router = APIRouter(prefix="/menus", tags=["menus"])
@@ -25,7 +25,7 @@ def get_menus(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[str] = Query(None, description="状态"),
     parent_id: Optional[str] = Query(None, description="父菜单ID"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -66,7 +66,7 @@ def get_menus(
 @router.get("/tree", response_model=Response[list[AdminMenuTreeNode]], summary="获取菜单树")
 def get_menu_tree(
     status: Optional[str] = Query(None, description="状态"),
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -89,7 +89,7 @@ def get_menu_tree(
 @router.get("/detail/{menu_id}", response_model=Response[AdminMenuResponse], summary="获取菜单详情")
 def get_menu(
     menu_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -112,7 +112,7 @@ def get_menu(
 @router.post("/create", response_model=Response[AdminMenuResponse], summary="创建菜单")
 def create_menu(
     menu_in: AdminMenuCreate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -136,7 +136,7 @@ def create_menu(
 def update_menu(
     menu_id: int,
     menu_in: AdminMenuUpdate,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -164,7 +164,7 @@ def update_menu(
 @router.post("/delete/{menu_id}", response_model=Response, summary="删除菜单")
 def delete_menu(
     menu_id: int,
-    current_user: AdminUser = Depends(get_current_superuser),
+    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """

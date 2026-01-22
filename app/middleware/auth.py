@@ -124,6 +124,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         
         # 获取请求路径
         api_path = request.url.path
+        app_logger.info("权限中间件：api路径为：" + api_path)
         
         # 创建数据库会话
         db = SessionLocal()
