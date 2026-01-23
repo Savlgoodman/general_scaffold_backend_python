@@ -127,11 +127,10 @@ def get_failed_login_stats(
 
 @router.get("/config", response_model=Response[SystemConfigBatchResponse], summary="获取系统基本配置")
 def get_system_config(
-    current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
-    获取系统基本配置信息（需要管理员权限）
+    获取系统基本配置信息（无需鉴权）
     
     返回系统配置的键值对，包括：
     - site_name: 站点名称
@@ -150,7 +149,7 @@ def get_system_config(
 
 
 
-@router.post("/config", response_model=Response[SystemConfigBatchResponse], summary="更新系统基本配置")
+@router.post("/config/update", response_model=Response[SystemConfigBatchResponse], summary="更新系统基本配置")
 def update_system_config(
     request: SystemConfigUpdateRequest,
     current_user: AdminUser = Depends(get_current_admin_user),

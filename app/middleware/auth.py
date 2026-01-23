@@ -27,6 +27,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/health",
         "/api/admin/auth/login",
         "/api/admin/auth/register",
+        "/api/admin/auth/captcha",
+        "/api/admin/system_info/config"
     ]
     
     async def dispatch(self, request: Request, call_next):

@@ -8,33 +8,71 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.logger import app_logger
 from app.schemas.admin_user import AdminUserLogin, TokenResponse, AdminUserCreate, AdminUserResponse
 from app.schemas.admin_auth import LoginResponse
+from app.schemas.captcha import CaptchaResponse, LoginWithCaptcha
 from app.schemas.common import Response
 from app.services.admin_user_service import AdminUserService
 from app.services.admin_rbac_service import AdminRBACService
 from app.services.admin_menu_service import AdminMenuService
+from app.services.captcha_service import CaptchaService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+@router.get("/captcha", response_model=Response[CaptchaResponse], summary="获取验证码")
+def get_captcha():
+    """
+    获取验证码
+    
+    返回验证码的唯一标识和Base64编码的图片数据
+    """
+    try:
+        captcha_key, captcha_image = CaptchaService.generate_captcha()
+        
+        return Response(
+            code=200,
+            message="获取验证码成功",
+            data=CaptchaResponse(
+                captcha_key=captcha_key,
+                captcha_image=captcha_image
+            )
+        )
+    except Exception as e:
+        app_logger.error(f"获取验证码失败: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="获取验证码失败"
+        )
+
+
 @router.post("/login", response_model=Response[LoginResponse], summary="管理员用户登录")
 def login(
-    user_in: AdminUserLogin,
+    user_in: LoginWithCaptcha,
     db: Session = Depends(get_db)
 ):
     """
-    管理员用户登录
+    管理员用户登录（带验证码验证）
     
     - **username**: 用户名
     - **password**: 密码
+    - **captcha_key**: 验证码键
+    - **captcha_code**: 验证码
     
     返回数据包含：
     - access_token: 访问令牌
     - refresh_token: 刷新令牌
     - menus: 用户菜单权限树（超级管理员返回所有激活菜单）
     """
-    # 验证管理员用户
+    # 1. 验证验证码
+    if not CaptchaService.verify_captcha(user_in.captcha_key, user_in.captcha_code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码错误或已过期",
+        )
+    
+    # 2. 验证管理员用户
     user = AdminUserService.authenticate(db, user_in.username, user_in.password)
     
     if not user:

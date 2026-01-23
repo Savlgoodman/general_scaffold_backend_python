@@ -86,6 +86,14 @@ class APILogConfig(BaseModel):
     max_body_length: int
 
 
+class CaptchaConfig(BaseModel):
+    """验证码配置"""
+    width: int = 130
+    height: int = 48
+    length: int = 5
+    expire_seconds: int = 300
+
+
 class Settings(BaseSettings):
     """全局配置类"""
     environment: str = "DEV"
@@ -96,6 +104,7 @@ class Settings(BaseSettings):
     logging: LoggingConfig
     cors: CORSConfig
     api_log: APILogConfig
+    captcha: CaptchaConfig = CaptchaConfig()
 
     class Config:
         case_sensitive = False
