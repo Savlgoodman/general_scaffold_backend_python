@@ -9,7 +9,8 @@ from app.models.admin_user import AdminUser
 from app.schemas.system_info import (
     SystemResourcesResponse, NetworkStatsResponse,
     RedisStatusResponse, RedisKeyValueResponse,
-    FailedLoginStatsResponse
+    FailedLoginStatsResponse, SystemConfigBatchResponse,
+    SystemConfigUpdateRequest
 )
 from app.schemas.common import Response, PageResponse
 from app.services.system_info_service import SystemInfoService
@@ -121,3 +122,88 @@ def get_failed_login_stats(
         message="获取成功",
         data=FailedLoginStatsResponse(**stats)
     )
+
+
+
+@router.get("/config", response_model=Response[SystemConfigBatchResponse], summary="获取系统基本配置")
+def get_system_config(
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取系统基本配置信息（需要管理员权限）
+    
+    返回系统配置的键值对，包括：
+    - site_name: 站点名称
+    - version: 系统版本号
+    - last_update_date: 最后更新日期
+    
+    如果数据库中没有配置，将返回默认配置。
+    """
+    configs = SystemInfoService.get_system_config(db)
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=SystemConfigBatchResponse(configs=configs)
+    )
+
+
+
+@router.post("/config", response_model=Response[SystemConfigBatchResponse], summary="更新系统基本配置")
+def update_system_config(
+    request: SystemConfigUpdateRequest,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    批量更新系统基本配置信息（需要管理员权限）
+    
+    只允许更新以下配置项：
+    - site_name: 站点名称
+    - version: 系统版本号
+    - last_update_date: 最后更新日期
+    
+    支持批量更新多个配置项。如果配置项已存在则更新，不存在则创建。
+    
+    请求体示例：
+    ```json
+    {
+        "configs": [
+            {
+                "config_key": "site_name",
+                "config_value": "我的网站",
+                "description": "站点名称"
+            },
+            {
+                "config_key": "version",
+                "config_value": "2.0.0",
+                "description": "系统版本"
+            }
+        ]
+    }
+    ```
+    """
+    try:
+        # 转换为字典列表
+        configs_data = [config.model_dump() for config in request.configs]
+        
+        # 调用服务层更新配置
+        updated_configs = SystemInfoService.update_system_config(db, configs_data)
+        
+        return Response(
+            code=200,
+            message="更新成功",
+            data=SystemConfigBatchResponse(configs=updated_configs)
+        )
+    except ValueError as e:
+        # 配置键验证失败
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"更新配置失败: {str(e)}"
+        )

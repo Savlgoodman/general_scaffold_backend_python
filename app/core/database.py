@@ -81,6 +81,7 @@ def init_db() -> None:
         admin_role_menu,
         admin_user_permission_override,
         admin_user_menu_override,
+        admin_system_config,
     )
     
     Base.metadata.create_all(bind=engine)

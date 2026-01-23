@@ -42,3 +42,33 @@ class RedisKeyValueResponse(BaseModel):
 class FailedLoginStatsResponse(BaseModel):
     """失败登录统计响应"""
     total_count: int = Field(..., description="今日失败登录总数")
+
+
+
+class SystemConfigResponse(BaseModel):
+    """系统配置响应"""
+    config_key: str = Field(..., description="配置键")
+    config_value: str = Field(..., description="配置值")
+    description: Optional[str] = Field(None, description="配置描述")
+
+
+class SystemConfigItem(BaseModel):
+    """系统配置项"""
+    config_key: str = Field(
+        ..., 
+        min_length=1, 
+        description="配置键（只允许: site_name, version, last_update_date）",
+        pattern="^(site_name|version|last_update_date)$"
+    )
+    config_value: str = Field(..., description="配置值")
+    description: Optional[str] = Field(None, description="配置描述")
+
+
+class SystemConfigUpdateRequest(BaseModel):
+    """系统配置更新请求"""
+    configs: list[SystemConfigItem] = Field(..., min_length=1, description="配置项列表")
+
+
+class SystemConfigBatchResponse(BaseModel):
+    """系统配置批量响应"""
+    configs: dict[str, str] = Field(..., description="配置键值对")

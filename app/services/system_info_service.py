@@ -14,6 +14,16 @@ from app.models.api_log import APILog
 class SystemInfoService:
     """系统信息服务"""
     
+    # 默认系统配置
+    DEFAULT_CONFIGS = {
+        "site_name": "通用后台管理系统",
+        "version": "1.0.0",
+        "last_update_date": "2024-01-01"
+    }
+    
+    # 允许的配置键（白名单）
+    ALLOWED_CONFIG_KEYS = {"site_name", "version", "last_update_date"}
+    
     @staticmethod
     def get_system_resources() -> Dict:
         """
@@ -214,3 +224,105 @@ class SystemInfoService:
             return {
                 "total_count": 0
             }
+
+    
+    @staticmethod
+    def get_system_config(db: Session) -> Dict[str, str]:
+        """
+        获取系统配置信息
+        只返回允许的配置键（site_name, version, last_update_date）
+        如果数据库为空，返回默认配置
+        """
+        try:
+            from app.models.admin_system_config import AdminSystemConfig
+            
+            # 查询所有未删除的配置项，并且只查询允许的键
+            configs = db.query(AdminSystemConfig).filter(
+                AdminSystemConfig.is_deleted == False,
+                AdminSystemConfig.config_key.in_(SystemInfoService.ALLOWED_CONFIG_KEYS)
+            ).all()
+            
+            # 如果数据库为空，返回默认配置
+            if not configs:
+                app_logger.info("数据库中无配置项，返回默认配置")
+                return SystemInfoService.DEFAULT_CONFIGS.copy()
+            
+            # 转换为字典格式
+            result = {config.config_key: config.config_value for config in configs}
+            
+            # 补充缺失的默认配置项
+            for key in SystemInfoService.ALLOWED_CONFIG_KEYS:
+                if key not in result:
+                    result[key] = SystemInfoService.DEFAULT_CONFIGS.get(key, "")
+            
+            return result
+        except Exception as e:
+            app_logger.error(f"获取系统配置失败: {str(e)}")
+            # 发生错误时返回默认配置
+            return SystemInfoService.DEFAULT_CONFIGS.copy()
+
+    
+    @staticmethod
+    def update_system_config(db: Session, configs: List[Dict]) -> Dict[str, str]:
+        """
+        批量更新或创建系统配置
+        只允许更新预定义的配置键（site_name, version, last_update_date）
+        
+        Args:
+            db: 数据库会话
+            configs: 配置项列表，每项包含 config_key, config_value, description
+        
+        Returns:
+            更新后的所有配置字典
+        
+        Raises:
+            ValueError: 当配置键不在允许列表中时
+        """
+        try:
+            from app.models.admin_system_config import AdminSystemConfig
+            
+            for config_item in configs:
+                config_key = config_item.get("config_key")
+                config_value = config_item.get("config_value")
+                description = config_item.get("description")
+                
+                # 验证配置键是否在允许列表中
+                if config_key not in SystemInfoService.ALLOWED_CONFIG_KEYS:
+                    error_msg = f"不允许的配置键: {config_key}。只允许: {', '.join(SystemInfoService.ALLOWED_CONFIG_KEYS)}"
+                    app_logger.warning(error_msg)
+                    raise ValueError(error_msg)
+                
+                # 查询配置项是否存在
+                existing_config = db.query(AdminSystemConfig).filter(
+                    AdminSystemConfig.config_key == config_key,
+                    AdminSystemConfig.is_deleted == False
+                ).first()
+                
+                if existing_config:
+                    # 更新已存在的配置项
+                    existing_config.config_value = config_value
+                    if description is not None:
+                        existing_config.description = description
+                    app_logger.info(f"更新配置项: {config_key}")
+                else:
+                    # 创建新的配置项
+                    new_config = AdminSystemConfig(
+                        config_key=config_key,
+                        config_value=config_value,
+                        description=description
+                    )
+                    db.add(new_config)
+                    app_logger.info(f"创建配置项: {config_key}")
+            
+            # 提交事务
+            db.commit()
+            
+            # 返回更新后的所有配置
+            return SystemInfoService.get_system_config(db)
+        except ValueError:
+            # 重新抛出验证错误
+            raise
+        except Exception as e:
+            db.rollback()
+            app_logger.error(f"更新系统配置失败: {str(e)}")
+            raise
