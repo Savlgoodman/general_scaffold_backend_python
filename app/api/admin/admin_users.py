@@ -18,7 +18,7 @@ from app.schemas.admin_user_menu_override import (
     AdminUserMenuOverrideResponse, AdminUserMenuOverrideBatchCreate
 )
 from app.schemas.admin_menu import AdminMenuTreeNode
-from app.schemas.admin_permission import AdminPermissionResponse
+from app.schemas.admin_permission import AdminPermissionResponse, UserPermissionsDetailResponse, UserPermissionOverrideItem
 from app.schemas.common import Response, PageResponse
 from app.services.admin_user_service import AdminUserService
 from app.services.admin_rbac_service import AdminRBACService
@@ -535,3 +535,128 @@ def toggle_user_status(
         message=f"{status_text}用户成功",
         data=None
     )
+
+
+@router.get("/permissions-detail/{user_id}", response_model=Response[UserPermissionsDetailResponse], summary="获取用户权限详情")
+def get_user_permissions_detail(
+    user_id: int,
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户的完整权限详情（按分组展示）
+    
+    返回按 group_key 分组的权限列表，每个分组包含：
+    - group_key: 分组标识
+    - group_name: 分组名称
+    - group_permission: 组权限（如果有）
+    - children: 子权限列表
+    
+    每个权限项包含：
+    - id, name, resource_pattern, method
+    - effect: allow/deny
+    - source: 权限来源信息（包含角色信息或用户覆盖标识）
+    - source_description: 来源描述文本
+    - is_inherited: 是否从组权限继承
+    - is_overridden: 是否被覆盖
+    
+    权限来源说明：
+    - 允许于角色[角色名]的组权限[权限名]
+    - 允许于角色[角色名]的子权限[权限名]
+    - 允许于用户权限覆盖
+    - 拒绝于角色[角色名]的组权限[权限名]
+    - 拒绝于角色[角色名]的子权限[权限名]
+    - 拒绝于用户权限覆盖
+    """
+    try:
+        result = AdminRBACService.get_user_permissions_detail(db, user_id)
+        return Response(
+            code=200,
+            message="获取成功",
+            data=result
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+
+
+@router.get("/permissions-for-override/{user_id}", response_model=Response[PageResponse[UserPermissionOverrideItem]], summary="获取用户权限覆盖管理列表")
+def get_permissions_for_override(
+    user_id: int,
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    overridden: Optional[str] = Query(None, description="覆盖状态筛选：overridden=已覆盖, not_overridden=未覆盖"),
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取用户权限覆盖管理列表（需要超级管理员权限）
+    
+    用于管理员查看和管理用户的权限覆盖状态。
+    返回所有非组权限，标记每个权限的角色授权状态和用户覆盖状态。
+    
+    必传参数：
+    - page: 页码
+    - page_size: 每页数量
+    
+    可选查询条件：
+    - keyword: 搜索关键词（权限名称、资源模式）
+    - overridden: 覆盖状态筛选（overridden=已覆盖, not_overridden=未覆盖）
+    
+    返回字段说明：
+    - id: 权限ID
+    - name: 权限名称
+    - resource_pattern: 资源模式
+    - method: HTTP方法
+    - group_key: 分组标识
+    - group_name: 分组名称
+    - description: 描述
+    
+    角色层面状态：
+    - role_granted: 角色是否已授权（直接或继承）
+    - role_effect: 角色授权效果（allow/deny），未授权时为 null
+    - role_source: 角色授权来源描述（如"角色[管理员]的组权限[系统信息]"）
+    - is_inherited: 是否从组权限继承
+    
+    用户覆盖状态：
+    - is_overridden: 是否已被用户覆盖
+    - override_effect: 用户覆盖效果（allow/deny），未覆盖时为 null
+    
+    最终状态：
+    - final_effect: 最终效果（allow/deny）
+    - source_description: 最终来源描述
+    """
+    # 检查用户是否存在
+    user = AdminUserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="管理员用户不存在"
+        )
+    
+    params = clean_query_params(keyword=keyword)
+    
+    skip = (page - 1) * page_size
+    try:
+        items, total = AdminRBACService.get_user_permissions_for_override_management(
+            db, user_id, skip, page_size, params['keyword'], overridden
+        )
+        
+        return Response(
+            code=200,
+            message="获取成功",
+            data=PageResponse(
+                total=total,
+                page=page,
+                page_size=page_size,
+                items=items
+            )
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )

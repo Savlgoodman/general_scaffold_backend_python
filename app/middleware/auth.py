@@ -91,12 +91,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # 超级管理员跳过权限验证
         if not is_superuser:
             # 验证API权限
-            has_permission = await self._check_api_permission(request, user_id)
+            permission_result = await self._check_api_permission(request, user_id)
             
-            if not has_permission:
+            if not permission_result.allowed:
                 return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    content={"code": 403, "message": "无权访问该接口", "data": None}
+                    content={
+                        "code": 403, 
+                        "message": "无权访问该接口", 
+                        "data": {
+                            "path": request.url.path,
+                            "method": request.method,
+                            "deny_reason": permission_result.deny_reason
+                        }
+                    }
                 )
         
         # 继续处理请求
@@ -130,41 +138,53 @@ class AuthMiddleware(BaseHTTPMiddleware):
         except ValueError:
             return None
     
-    async def _check_api_permission(self, request: Request, user_id: int) -> bool:
+    async def _check_api_permission(self, request: Request, user_id: int):
         """
         检查用户是否有访问该API的权限
-        支持通配符匹配，如 /api/admin/users/detail/* 可以匹配 /api/admin/users/detail/123
+        支持通配符匹配和优先级机制
+        
+        权限检查流程：
+        1. 获取用户所有角色的权限（包括effect和priority）
+        2. 匹配请求路径（支持通配符）
+        3. 按优先级排序
+        4. 应用最高优先级规则
+        5. 默认拒绝（无匹配规则时）
+        
+        Returns:
+            PermissionCheckResult 包含详细的权限检查结果
         """
         from app.core.database import SessionLocal
         from app.services.admin_rbac_service import AdminRBACService
-        import fnmatch
+        from app.schemas.admin_permission import PermissionCheckResult, PermissionSource, SourceType
         
-        # 获取请求路径
+        # 获取请求路径和方法
         api_path = request.url.path
-        app_logger.info("权限中间件：api路径为：" + api_path)
+        method = request.method
+        
+        app_logger.info(f"权限中间件：检查 [{method}] {api_path}")
         
         # 创建数据库会话
         db = SessionLocal()
         try:
-            # 获取用户的所有权限
-            user_permissions = AdminRBACService.get_user_permissions(db, user_id)
+            # 使用新的权限检查方法（返回详细结果）
+            result = AdminRBACService.check_permission_detail(db, user_id, api_path, method)
             
-            # 检查是否有该API的权限（支持通配符匹配）
-            for permission_path in user_permissions:
-                # 精确匹配
-                if api_path == permission_path:
-                    return True
-                # 通配符匹配（将 * 转换为 fnmatch 格式）
-                if '*' in permission_path:
-                    # 将权限路径中的 * 转换为 fnmatch 的通配符格式
-                    pattern = permission_path.replace('*', '*')
-                    if fnmatch.fnmatch(api_path, pattern):
-                        return True
+            if result.allowed:
+                app_logger.info(f"权限中间件：用户 {user_id} 有权限访问 [{method}] {api_path}")
+            else:
+                app_logger.warning(f"权限中间件：用户 {user_id} 无权限访问 [{method}] {api_path}，原因：{result.deny_reason}")
             
-            return False
+            return result
         except Exception as e:
             app_logger.error(f"检查API权限时出错: {str(e)}")
-            return False
+            # 返回默认拒绝结果
+            source = PermissionSource(type=SourceType.NO_PERMISSION)
+            return PermissionCheckResult(
+                allowed=False,
+                effect="deny",
+                source=source,
+                deny_reason=f"权限检查出错: {str(e)}"
+            )
         finally:
             db.close()
 

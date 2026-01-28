@@ -140,7 +140,7 @@ class AdminRoleService:
     
     @staticmethod
     def assign_permissions(db: Session, role_id: int, permission_ids: List[int]) -> bool:
-        """为角色分配权限"""
+        """为角色分配权限（旧方法，保留兼容）"""
         role = AdminRoleService.get_by_id(db, role_id)
         if not role:
             return False
@@ -162,6 +162,82 @@ class AdminRoleService:
         db.commit()
         
         app_logger.info(f"为角色 {role.name} 分配权限成功")
+        
+        return True
+    
+    @staticmethod
+    def assign_group_permissions(db: Session, role_id: int, permission_ids: List[int]) -> bool:
+        """
+        为角色分配组权限（只能分配 is_group=True 的权限）
+        
+        Args:
+            db: 数据库会话
+            role_id: 角色ID
+            permission_ids: 组权限ID列表
+            
+        Returns:
+            是否成功
+            
+        Raises:
+            ValueError: 如果包含非组权限
+        """
+        from app.models.admin_permission import AdminPermission
+        
+        role = AdminRoleService.get_by_id(db, role_id)
+        if not role:
+            return False
+        
+        # 验证所有权限都是组权限
+        if permission_ids:
+            permissions = db.query(AdminPermission).filter(
+                AdminPermission.id.in_(permission_ids),
+                AdminPermission.is_deleted == False
+            ).all()
+            
+            # 检查是否所有权限都存在
+            found_ids = {p.id for p in permissions}
+            missing_ids = set(permission_ids) - found_ids
+            if missing_ids:
+                raise ValueError(f"权限不存在: {missing_ids}")
+            
+            # 检查是否都是组权限
+            non_group_perms = [p for p in permissions if not p.is_group]
+            if non_group_perms:
+                non_group_names = [p.name for p in non_group_perms]
+                raise ValueError(f"以下权限不是组权限，不能通过此接口分配: {non_group_names}")
+        
+        # 删除旧的组权限关联（只删除组权限）
+        existing_group_perm_ids = db.query(AdminRolePermission.permission_id).join(
+            AdminPermission,
+            AdminRolePermission.permission_id == AdminPermission.id
+        ).filter(
+            AdminRolePermission.role_id == role_id,
+            AdminRolePermission.is_deleted == False,
+            AdminPermission.is_group == True
+        ).all()
+        
+        existing_group_perm_ids = [p[0] for p in existing_group_perm_ids]
+        
+        if existing_group_perm_ids:
+            db.query(AdminRolePermission).filter(
+                AdminRolePermission.role_id == role_id,
+                AdminRolePermission.permission_id.in_(existing_group_perm_ids),
+                AdminRolePermission.is_deleted == False
+            ).update({"is_deleted": True, "updated_at": datetime.now(timezone.utc)})
+        
+        # 创建新的组权限关联（默认 effect=allow, priority=0）
+        for permission_id in permission_ids:
+            role_permission = AdminRolePermission(
+                role_id=role_id,
+                permission_id=permission_id,
+                effect="allow",
+                priority=0
+            )
+            db.add(role_permission)
+        
+        db.commit()
+        
+        app_logger.info(f"为角色 {role.name} 分配组权限成功，共 {len(permission_ids)} 个")
         
         return True
     

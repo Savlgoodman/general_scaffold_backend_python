@@ -1,7 +1,7 @@
 """
 管理员权限管理API
 """
-from typing import Optional
+from typing import Optional, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,8 @@ def get_permissions(
     page_size: int = Query(20, ge=1, le=10000, description="每页数量"),
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[str] = Query(None, description="状态"),
+    group_key: Optional[str] = Query(None, description="分组标识"),
+    is_group: Optional[str] = Query(None, description="是否组权限"),
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -35,16 +37,26 @@ def get_permissions(
     - page_size: 每页数量
     
     可选查询条件：
-    - keyword: 搜索关键词（权限名称、API路径）
+    - keyword: 搜索关键词（权限名称、资源模式）
     - status: 状态（1=启用，0=禁用）
+    - group_key: 分组标识
+    - is_group: 是否组权限（true/false）
     """
     params = clean_query_params(
         keyword=keyword,
-        status=(status, int)
+        status=(status, int),
+        group_key=group_key,
+        is_group=(is_group, bool)
     )
     
     skip = (page - 1) * page_size
-    permissions, total = AdminPermissionService.get_list(db, skip, page_size, params['keyword'], params['status'])
+    permissions, total = AdminPermissionService.get_list(
+        db, skip, page_size, 
+        params['keyword'], 
+        params['status'],
+        params['group_key'],
+        params['is_group']
+    )
     
     return Response(
         code=200,
@@ -153,6 +165,30 @@ def delete_permission(
         code=200,
         message="删除成功",
         data=None
+    )
+
+
+@router.get("/groups", response_model=Response[Dict[str, List[AdminPermissionResponse]]], summary="获取分组权限列表")
+def get_grouped_permissions(
+    current_user: AdminUser = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取按分组组织的权限列表（需要超级管理员权限）
+    
+    返回按 group_key 分组的权限字典
+    """
+    grouped = AdminPermissionService.get_grouped_permissions(db)
+    
+    # 转换为响应格式
+    result = {}
+    for group_key, permissions in grouped.items():
+        result[group_key] = [AdminPermissionResponse.model_validate(p) for p in permissions]
+    
+    return Response(
+        code=200,
+        message="获取成功",
+        data=result
     )
 
 
