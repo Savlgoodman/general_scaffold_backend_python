@@ -3,7 +3,7 @@
 包括登录、注册、刷新token等
 """
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -17,6 +17,8 @@ from app.services.admin_user_service import AdminUserService
 from app.services.admin_rbac_service import AdminRBACService
 from app.services.admin_menu_service import AdminMenuService
 from app.services.captcha_service import CaptchaService
+from app.services.admin_login_log_service import AdminLoginLogService
+from app.schemas.admin_login_log import AdminLoginLogCreate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -50,47 +52,69 @@ def get_captcha():
 @router.post("/login", response_model=Response[LoginResponse], summary="管理员用户登录")
 def login(
     user_in: LoginWithCaptcha,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
     管理员用户登录（带验证码验证）
-    
+
     - **username**: 用户名
     - **password**: 密码
     - **captcha_key**: 验证码键
     - **captcha_code**: 验证码
-    
+
     返回数据包含：
     - access_token: 访问令牌
     - refresh_token: 刷新令牌
     - menus: 用户菜单权限树（超级管理员返回所有激活菜单）
     """
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("User-Agent", "")
+
     # 1. 验证验证码
     if not CaptchaService.verify_captcha(user_in.captcha_key, user_in.captcha_code):
+        # 记录登录失败日志
+        AdminLoginLogService.create(db, AdminLoginLogCreate(
+            username=user_in.username, success=False,
+            failure_reason="验证码错误或已过期",
+            ip_address=ip_address, user_agent=user_agent,
+        ))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="验证码错误或已过期",
         )
-    
-    # 2. 验证管理员用户
+
+    # 2. 验证���理员用户
     user = AdminUserService.authenticate(db, user_in.username, user_in.password)
-    
+
     if not user:
+        # 记录登录失败日志
+        AdminLoginLogService.create(db, AdminLoginLogCreate(
+            username=user_in.username, success=False,
+            failure_reason="用户名或密码错误",
+            ip_address=ip_address, user_agent=user_agent,
+        ))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
         )
-    
+
+    # 记录登录成功日志
+    AdminLoginLogService.create(db, AdminLoginLogCreate(
+        user_id=user.id, username=user.username, success=True,
+        ip_address=ip_address, user_agent=user_agent,
+    ))
+
     # 生成token
     token_data = {
         "user_id": user.id,
         "username": user.username,
         "is_superuser": user.is_superuser,
     }
-    
+
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
-    
+
     # 获取用户菜单权限
     if user.is_superuser:
         # 超级管理员获取所有激活的菜单
@@ -98,7 +122,7 @@ def login(
     else:
         # 普通用户获取角色对应的菜单
         menus = AdminRBACService.get_user_menus(db, user.id)
-    
+
     return Response(
         code=200,
         message="登录成功",

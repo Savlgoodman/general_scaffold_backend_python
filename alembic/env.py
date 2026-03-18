@@ -29,6 +29,8 @@ from app.models import (  # noqa
     admin_user_menu_override,
     admin_system_config,
     app_error_log,
+    admin_login_log,
+    admin_operation_log,
 )
 
 config = context.config

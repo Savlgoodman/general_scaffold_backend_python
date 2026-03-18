@@ -2,7 +2,7 @@
 管理员用户管理API
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -24,6 +24,7 @@ from app.services.admin_user_service import AdminUserService
 from app.services.admin_rbac_service import AdminRBACService
 from app.utils.dependencies import get_current_admin_user, get_current_admin_user
 from app.utils.query_params import clean_query_params
+from app.utils.operation_log import log_operation
 
 router = APIRouter(prefix="/admin_users", tags=["admin users"])
 
@@ -159,6 +160,7 @@ def get_admin_user(
 @router.post("/create", response_model=Response[AdminUserResponse], summary="创建管理员用户")
 def create_admin_user(
     user_in: AdminUserCreate,
+    request: Request,
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -167,6 +169,10 @@ def create_admin_user(
     """
     try:
         user = AdminUserService.create(db, user_in)
+        log_operation(
+            db, request=request, action="CREATE", resource_type="user",
+            resource_id=user.id, description=f"创建用户 {user.username}",
+        )
         return Response(
             code=200,
             message="创建成功",
@@ -211,6 +217,7 @@ def update_admin_user(
 @router.post("/delete/{user_id}", response_model=Response, summary="删除管理员用户")
 def delete_admin_user(
     user_id: int,
+    request: Request,
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -223,14 +230,21 @@ def delete_admin_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="不能删除自己"
         )
-    
+
+    target_user = AdminUserService.get_by_id(db, user_id)
     success = AdminUserService.delete(db, user_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="管理员用户不存在"
         )
-    
+
+    log_operation(
+        db, request=request, action="DELETE", resource_type="user",
+        resource_id=user_id,
+        description=f"删除用户 {target_user.username if target_user else user_id}",
+    )
+
     return Response(
         code=200,
         message="删除成功",
@@ -242,6 +256,7 @@ def delete_admin_user(
 def assign_roles(
     user_id: int,
     data: AdminUserAssignRoles,
+    request: Request,
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -255,9 +270,17 @@ def assign_roles(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="管理员用户不存在"
         )
-    
+
+    old_role_ids = AdminRBACService.get_user_roles(db, user_id)
     AdminRBACService.assign_user_roles(db, user_id, data.role_ids)
-    
+    log_operation(
+        db, request=request, action="UPDATE", resource_type="user",
+        resource_id=user_id,
+        description=f"为用户 {user.username} 分配角色",
+        before_data={"role_ids": old_role_ids},
+        after_data={"role_ids": data.role_ids},
+    )
+
     return Response(
         code=200,
         message="分配角色成功",
@@ -508,6 +531,7 @@ def get_complete_permissions(
 @router.post("/toggle-status/{user_id}", response_model=Response, summary="调整用户启用状态")
 def toggle_user_status(
     user_id: int,
+    request: Request,
     is_active: bool = Body(..., embed=True, description="是否启用"),
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -521,15 +545,21 @@ def toggle_user_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="不能禁用自己的账户"
         )
-    
+
     user = AdminUserService.toggle_status(db, user_id, is_active)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="管理员用户不存在"
         )
-    
+
     status_text = "启用" if is_active else "禁用"
+    log_operation(
+        db, request=request, action="UPDATE", resource_type="user",
+        resource_id=user_id,
+        description=f"{status_text}用户 {user.username}",
+    )
+
     return Response(
         code=200,
         message=f"{status_text}用户成功",

@@ -6,9 +6,9 @@ from sqlalchemy import Column, Integer, String, DateTime, Text
 from app.core.database import Base
 
 
-class AppErrorLog(Base):
+class AdminErrorLog(Base):
     """系统异常日志表"""
-    __tablename__ = "app_error_logs"
+    __tablename__ = "admin_error_logs"
 
     id = Column(Integer, primary_key=True, index=True, comment="日志ID")
 
@@ -31,4 +31,4 @@ class AppErrorLog(Base):
     # created_at, updated_at, is_deleted 字段由 Base 基类自动提供
 
     def __repr__(self):
-        return f"<AppErrorLog(id={self.id}, level={self.level}, message={self.message[:50] if self.message else ''})>"
+        return f"<AdminErrorLog(id={self.id}, level={self.level}, message={self.message[:50] if self.message else ''})>"

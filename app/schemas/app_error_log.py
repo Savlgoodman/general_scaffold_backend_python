@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class AppErrorLogBase(BaseModel):
+class AdminErrorLogBase(BaseModel):
     """系统异常日志基础信息"""
     level: str = Field(..., description="日志级别，可选值：WARNING / ERROR / CRITICAL")
     message: str = Field(..., description="日志消息内容，描述异常概况")
@@ -19,12 +19,12 @@ class AppErrorLogBase(BaseModel):
     ip_address: Optional[str] = Field(None, description="客户端IP地址")
 
 
-class AppErrorLogCreate(AppErrorLogBase):
+class AdminErrorLogCreate(AdminErrorLogBase):
     """创建系统异常日志（内部使用，由 loguru sink 自动调用）"""
     pass
 
 
-class AppErrorLogResponse(AppErrorLogBase):
+class AdminErrorLogResponse(AdminErrorLogBase):
     """系统异常日志响应，包含完整日志信息"""
     id: int = Field(..., description="日志记录ID")
     created_at: datetime = Field(..., description="日志记录时间")
@@ -33,7 +33,7 @@ class AppErrorLogResponse(AppErrorLogBase):
         from_attributes = True
 
 
-class AppErrorLogQuery(BaseModel):
+class AdminErrorLogQuery(BaseModel):
     """系统异常日志查询参数，支持多条件筛选和分页"""
     level: Optional[str] = Field(None, description="按日志级别筛选，可选值：WARNING / ERROR / CRITICAL")
     keyword: Optional[str] = Field(None, description="按日志消息内容模糊搜索")
@@ -45,7 +45,7 @@ class AppErrorLogQuery(BaseModel):
     page_size: int = Field(20, ge=1, le=100, description="每页数量，最大100")
 
 
-class AppErrorLogStatistics(BaseModel):
+class AdminErrorLogStatistics(BaseModel):
     """系统异常日志统计信息，用于仪表盘展示"""
     total: int = Field(..., description="日志总数")
     warning_count: int = Field(..., description="WARNING 级别日志数量")

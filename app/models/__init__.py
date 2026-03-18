@@ -11,7 +11,9 @@ from app.models.admin_role_permission import AdminRolePermission
 from app.models.admin_role_menu import AdminRoleMenu
 from app.models.admin_user_permission_override import AdminUserPermissionOverride, EffectType
 from app.models.admin_user_menu_override import AdminUserMenuOverride, MenuEffectType
-from app.models.app_error_log import AppErrorLog
+from app.models.app_error_log import AdminErrorLog
+from app.models.admin_login_log import AdminLoginLog
+from app.models.admin_operation_log import AdminOperationLog
 
 __all__ = [
     "AdminUser",
@@ -26,7 +28,9 @@ __all__ = [
     "AdminUserMenuOverride",
     "EffectType",
     "MenuEffectType",
-    "AppErrorLog",
+    "AdminErrorLog",
+    "AdminLoginLog",
+    "AdminOperationLog",
 ]
 
 

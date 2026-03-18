@@ -50,6 +50,7 @@ python -m pytest tests/test_specific.py -v
 - `AuthMiddleware` 通过 `AdminRBACService.check_permission_detail()` 在每个请求上检查权限
 
 ### 关键约定
+- **表名前缀**：所有后台管理相关的数据库表名必须以 `admin_` 开头（如 `admin_users`、`admin_error_logs`），模型类名对应使用 `Admin` 前缀
 - **统一响应格式**：所有接口返回 `Response(code=, message=, data=)`，定义在 `app/schemas/common.py`
 - **软删除**：模型使用 `is_deleted` 布尔字段，不做物理删除
 - **配置管理**：`config.yaml` 支持 DEV/TEST/PROD 三环境，`app/core/config.py` 加载，环境变量可覆盖
@@ -69,6 +70,7 @@ python -m pytest tests/test_specific.py -v
 - Schema 的每个字段使用 `Field(description=...)` 或 `json_schema_extra` 说明含义
 - 响应模型使用 `response_model` 明确声明，确保 OpenAPI Schema 完整
 - 枚举值在 description 中列出所有可选项及含义
+- **API tags 必须使用英文**（如 `tags=["Error Logs"]`），中文 tag 会导致前端代码生成乱码
 
 ### 数据库
 - PostgreSQL + SQLAlchemy ORM（同步模式）

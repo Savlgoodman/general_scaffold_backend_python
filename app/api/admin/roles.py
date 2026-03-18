@@ -2,7 +2,7 @@
 管理员角色管理API
 """
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -21,6 +21,7 @@ from app.services.admin_role_service import AdminRoleService
 from app.services.admin_rbac_service import AdminRBACService
 from app.utils.dependencies import get_current_admin_user
 from app.utils.query_params import clean_query_params
+from app.utils.operation_log import log_operation
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
@@ -91,6 +92,7 @@ def get_role(
 @router.post("/create", response_model=Response[AdminRoleResponse], summary="创建角色")
 def create_role(
     role_in: AdminRoleCreate,
+    request: Request,
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -99,6 +101,10 @@ def create_role(
     """
     try:
         role = AdminRoleService.create(db, role_in)
+        log_operation(
+            db, request=request, action="CREATE", resource_type="role",
+            resource_id=role.id, description=f"创建角色 {role.name}",
+        )
         return Response(
             code=200,
             message="创建成功",
@@ -143,19 +149,27 @@ def update_role(
 @router.post("/delete/{role_id}", response_model=Response, summary="删除角色")
 def delete_role(
     role_id: int,
+    request: Request,
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
     删除角色（需要超级管理员权限）
     """
+    role = AdminRoleService.get_by_id(db, role_id)
     success = AdminRoleService.delete(db, role_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="角色不存在"
         )
-    
+
+    log_operation(
+        db, request=request, action="DELETE", resource_type="role",
+        resource_id=role_id,
+        description=f"删除角色 {role.name if role else role_id}",
+    )
+
     return Response(
         code=200,
         message="删除成功",
@@ -167,12 +181,13 @@ def delete_role(
 def assign_permissions(
     role_id: int,
     data: AdminRoleAssignPermissions,
+    request: Request,
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
     为角色分配组权限（只能分配 is_group=True 的权限）
-    
+
     组权限会自动继承到所有匹配的子权限
     """
     try:
@@ -182,7 +197,15 @@ def assign_permissions(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="角色不存在"
             )
-        
+
+        role = AdminRoleService.get_by_id(db, role_id)
+        log_operation(
+            db, request=request, action="UPDATE", resource_type="role",
+            resource_id=role_id,
+            description=f"为角色 {role.name if role else role_id} 分配组权限",
+            after_data={"permission_ids": data.permission_ids},
+        )
+
         return Response(
             code=200,
             message="分配组权限成功",

@@ -2,7 +2,7 @@
 API v1 路由
 """
 from fastapi import APIRouter
-from app.api.admin import auth, admin_users, api_logs, roles, permissions, menus, system_info, error_logs
+from app.api.admin import auth, admin_users, api_logs, roles, permissions, menus, system_info, error_logs, login_logs, operation_logs
 
 router = APIRouter(prefix="/admin")
 
@@ -15,5 +15,7 @@ router.include_router(permissions.router)
 router.include_router(menus.router)
 router.include_router(system_info.router)
 router.include_router(error_logs.router)
+router.include_router(login_logs.router)
+router.include_router(operation_logs.router)
 
 

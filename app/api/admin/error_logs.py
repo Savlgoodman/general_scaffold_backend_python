@@ -10,18 +10,18 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.admin_user import AdminUser
-from app.schemas.app_error_log import AppErrorLogResponse, AppErrorLogQuery, AppErrorLogStatistics
+from app.schemas.app_error_log import AdminErrorLogResponse, AdminErrorLogQuery, AdminErrorLogStatistics
 from app.schemas.common import Response, PageResponse
-from app.services.app_error_log_service import AppErrorLogService
+from app.services.app_error_log_service import AdminErrorLogService
 from app.utils.dependencies import get_current_admin_user
 from app.utils.query_params import clean_query_params
 
-router = APIRouter(prefix="/error-logs", tags=["系统异常日志"])
+router = APIRouter(prefix="/error-logs", tags=["Error Logs"])
 
 
 @router.get(
     "/list",
-    response_model=Response[PageResponse[AppErrorLogResponse]],
+    response_model=Response[PageResponse[AdminErrorLogResponse]],
     summary="获取系统异常日志列表",
     description="分页查询系统异常日志，支持按日志级别、关键词、请求路径、用户ID、时间范围等多条件筛选。"
                 "用于管理后台的异常日志列表页面，帮助运维人员排查系统问题。"
@@ -47,13 +47,13 @@ def get_error_logs(
         end_time=(end_time, datetime)
     )
 
-    query_params = AppErrorLogQuery(
+    query_params = AdminErrorLogQuery(
         page=page,
         page_size=page_size,
         **params
     )
 
-    logs, total = AppErrorLogService.get_list(db, query_params)
+    logs, total = AdminErrorLogService.get_list(db, query_params)
 
     return Response(
         code=200,
@@ -62,14 +62,14 @@ def get_error_logs(
             total=total,
             page=page,
             page_size=page_size,
-            items=[AppErrorLogResponse.model_validate(log) for log in logs]
+            items=[AdminErrorLogResponse.model_validate(log) for log in logs]
         )
     )
 
 
 @router.get(
     "/detail/{log_id}",
-    response_model=Response[AppErrorLogResponse],
+    response_model=Response[AdminErrorLogResponse],
     summary="获取异常日志详情",
     description="根据日志ID获取单条异常日志的完整信息，包括完整的异常堆栈。"
                 "用于点击列表中某���日志后查��详情。"
@@ -79,7 +79,7 @@ def get_error_log(
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    log = AppErrorLogService.get_by_id(db, log_id)
+    log = AdminErrorLogService.get_by_id(db, log_id)
     if not log:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -89,13 +89,13 @@ def get_error_log(
     return Response(
         code=200,
         message="获取成功",
-        data=AppErrorLogResponse.model_validate(log)
+        data=AdminErrorLogResponse.model_validate(log)
     )
 
 
 @router.get(
     "/statistics",
-    response_model=Response[AppErrorLogStatistics],
+    response_model=Response[AdminErrorLogStatistics],
     summary="获取异常日志统计",
     description="获取系统异常日志的统计概览，包括各级别（WARNING/ERROR/CRITICAL）的日志数量。"
                 "用于管理后台仪表盘展示异常趋势，支持按时间范围筛选。"
@@ -111,7 +111,7 @@ def get_error_log_statistics(
         end_time=(end_time, datetime)
     )
 
-    stats = AppErrorLogService.get_statistics(db, params.get('start_time'), params.get('end_time'))
+    stats = AdminErrorLogService.get_statistics(db, params.get('start_time'), params.get('end_time'))
 
     return Response(
         code=200,
@@ -132,7 +132,7 @@ def cleanup_old_error_logs(
     current_user: AdminUser = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    count = AppErrorLogService.delete_old_logs(db, days)
+    count = AdminErrorLogService.delete_old_logs(db, days)
 
     return Response(
         code=200,

@@ -117,14 +117,14 @@ def create_app() -> FastAPI:
         # 将带请求上下文的异常写入异常日志表
         try:
             from app.core.database import SessionLocal
-            from app.models.app_error_log import AppErrorLog
+            from app.models.app_error_log import AdminErrorLog
 
             user_id = getattr(request.state, "user_id", None)
             username = getattr(request.state, "username", None)
 
             db = SessionLocal()
             try:
-                log_entry = AppErrorLog(
+                log_entry = AdminErrorLog(
                     level="ERROR",
                     message=f"{type(exc).__name__}: {exc}",
                     traceback=tb_str,

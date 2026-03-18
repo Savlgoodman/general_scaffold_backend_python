@@ -24,7 +24,7 @@ def _db_sink(message):
 
     try:
         from app.core.database import SessionLocal
-        from app.models.app_error_log import AppErrorLog
+        from app.models.app_error_log import AdminErrorLog
 
         # 提取异常堆栈
         traceback_str = None
@@ -35,7 +35,7 @@ def _db_sink(message):
 
         db = SessionLocal()
         try:
-            log_entry = AppErrorLog(
+            log_entry = AdminErrorLog(
                 level=level,
                 message=str(record["message"])[:4000],  # 限制长度防止超大消息
                 traceback=traceback_str,

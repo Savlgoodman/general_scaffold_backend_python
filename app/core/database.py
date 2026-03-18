@@ -83,6 +83,8 @@ def init_db() -> None:
         admin_user_menu_override,
         admin_system_config,
         app_error_log,
+        admin_login_log,
+        admin_operation_log,
     )
     
     Base.metadata.create_all(bind=engine)
