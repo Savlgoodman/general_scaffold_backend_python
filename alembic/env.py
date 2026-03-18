@@ -28,6 +28,7 @@ from app.models import (  # noqa
     admin_user_permission_override,
     admin_user_menu_override,
     admin_system_config,
+    app_error_log,
 )
 
 config = context.config

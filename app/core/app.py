@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app.name,
         version=settings.app.version,
-        debug=settings.app.debug,
+        debug=False,  # 始终关闭 debug，防止 ServerErrorMiddleware 泄露堆栈
         lifespan=lifespan,
         docs_url="/docs" if settings.app.debug else None,
         redoc_url="/redoc" if settings.app.debug else None,
@@ -107,11 +107,42 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
-        """捕获所有未处理异常��防止堆栈信息泄露到前端"""
+        """捕获所有未处理异常，防止堆栈信息泄露到前端，同时将异常写入 app_error_logs 表"""
+        tb_str = traceback.format_exc()
         app_logger.error(
             f"未处理异常 [{request.method}] {request.url.path}: "
-            f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+            f"{type(exc).__name__}: {exc}\n{tb_str}"
         )
+
+        # 将带请求上下文的异常写入异常日志表
+        try:
+            from app.core.database import SessionLocal
+            from app.models.app_error_log import AppErrorLog
+
+            user_id = getattr(request.state, "user_id", None)
+            username = getattr(request.state, "username", None)
+
+            db = SessionLocal()
+            try:
+                log_entry = AppErrorLog(
+                    level="ERROR",
+                    message=f"{type(exc).__name__}: {exc}",
+                    traceback=tb_str,
+                    request_method=request.method,
+                    request_path=str(request.url.path),
+                    user_id=user_id,
+                    username=username,
+                    ip_address=request.client.host if request.client else None,
+                )
+                db.add(log_entry)
+                db.commit()
+            except Exception:
+                db.rollback()
+            finally:
+                db.close()
+        except Exception:
+            pass
+
         return JSONResponse(
             status_code=500,
             content={
