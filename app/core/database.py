@@ -85,6 +85,7 @@ def init_db() -> None:
         app_error_log,
         admin_login_log,
         admin_operation_log,
+        admin_notice,
     )
     
     Base.metadata.create_all(bind=engine)

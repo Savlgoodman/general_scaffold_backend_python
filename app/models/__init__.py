@@ -14,6 +14,7 @@ from app.models.admin_user_menu_override import AdminUserMenuOverride, MenuEffec
 from app.models.app_error_log import AdminErrorLog
 from app.models.admin_login_log import AdminLoginLog
 from app.models.admin_operation_log import AdminOperationLog
+from app.models.admin_notice import AdminNotice
 
 __all__ = [
     "AdminUser",
@@ -31,6 +32,7 @@ __all__ = [
     "AdminErrorLog",
     "AdminLoginLog",
     "AdminOperationLog",
+    "AdminNotice",
 ]
 
 

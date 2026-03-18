@@ -31,6 +31,7 @@ from app.models import (  # noqa
     app_error_log,
     admin_login_log,
     admin_operation_log,
+    admin_notice,
 )
 
 config = context.config
