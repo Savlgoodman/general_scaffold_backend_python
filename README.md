@@ -49,6 +49,7 @@ python main.py
 
 - **FastAPI**: 现代化的 Python Web 框架
 - **SQLAlchemy**: ORM 框架
+- **Alembic**: 数据库迁移管理
 - **PostgreSQL**: 关系型数据库
 - **Redis**: 缓存和会话存储
 - **JWT**: 用户认证
@@ -68,26 +69,18 @@ general_scaffold_backend_python/
 │   ├── schemas/                # Pydantic Schemas
 │   ├── services/               # 业务逻辑层
 │   └── utils/                  # 工具函数
+├── alembic/                    # 数据库迁移
+│   ├── versions/               # 迁移脚本
+│   └── env.py                  # 迁移环境配置
 ├── docker/                     # Docker 配置
-│   ├── Dockerfile.dev          # 开发环境镜像
-│   ├── Dockerfile.prod         # 生产环境镜像
-│   ├── docker-compose.dev.yml # 开发环境编排
-│   ├── docker-compose.prod.yml# 生产环境编排
-│   ├── docker-dev.sh           # 开发环境管理脚本
-│   ├── docker-prod.sh          # 生产环境管理脚本
-│   └── README.md               # Docker 使用文档
-├── database/                   # 数据库脚本
-│   ├── init.sql                # 初始化 SQL
-│   ├── create_tables.py        # 手动创建表脚本
-│   └── README.md               # 数据库文档
+├── database/                   # 数据库脚本（旧）
+├── docs/                       # 项目文档
 ├── tests/                      # 测试模块
 ├── logs/                       # 日志文件目录
+├── alembic.ini                 # Alembic 配置
 ├── config.yaml                 # 配置文件
 ├── main.py                     # 应用入口
-├── init_db.py                  # 数据库初始化脚本
 ├── requirements.txt            # Python依赖
-├── start-docker-dev.sh         # Docker 快速启动（Linux/Mac）
-├── start-docker-dev.ps1        # Docker 快速启动（Windows）
 └── README.md                   # 项目说明
 ```
 
@@ -194,24 +187,25 @@ nano docker/.env.prod
 
 ## 🗄️ 数据库
 
-### 初始化数据库
+### 数据库迁移 (Alembic)
 
-**方式一：自动初始化（推荐）**
+本项目使用 Alembic 管理数据库结构变更。修改模型后通过迁移脚本同步数据库，无需手动 DROP 表。
+
 ```bash
-python init_db.py
+# 修改模型后，生成迁移脚本
+alembic revision --autogenerate -m "describe_your_change"
+
+# 应用迁移到数据库
+alembic upgrade head
+
+# 回滚一个版本
+alembic downgrade -1
+
+# 查看当前版本
+alembic current
 ```
 
-**方式二：使用 SQL 文件**
-```bash
-psql -U postgres -d scaffold_dev -f database/init.sql
-```
-
-**方式三：使用 Python 脚本**
-```bash
-python database/create_tables.py
-```
-
-详细文档请查看：[database/README.md](database/README.md)
+详细文档请查看：[docs/database-migration.md](docs/database-migration.md)
 
 ### 数据库表结构
 
@@ -323,6 +317,7 @@ ports:
 
 ## 📚 相关文档
 
+- [数据库迁移指南](docs/database-migration.md)
 - [Docker 使用文档](docker/README.md)
 - [数据库文档](database/README.md)
 - [FastAPI 官方文档](https://fastapi.tiangolo.com/)

@@ -1,8 +1,12 @@
 """
 FastAPI应用创建和配置
 """
-from fastapi import FastAPI
+import traceback
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
@@ -74,7 +78,49 @@ def create_app() -> FastAPI:
     
     # 注册路由
     app.include_router(api_router, prefix="/api")
-    
+
+    # ==================== 全局异常处理 ====================
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        """处理HTTP异常，返回统一格式"""
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "code": exc.status_code,
+                "message": exc.detail if isinstance(exc.detail, str) else "请求错误",
+                "data": None,
+            },
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        """处理请求参数校验异常"""
+        return JSONResponse(
+            status_code= 422,
+            content={
+                "code": 422,
+                "message": "请求参数校验失败",
+                "data": exc.errors() if settings.app.debug else None,
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        """捕获所有未处理异常��防止堆栈信息泄露到前端"""
+        app_logger.error(
+            f"未处理异常 [{request.method}] {request.url.path}: "
+            f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": 500,
+                "message": "服务器内部错误" if not settings.app.debug else str(exc),
+                "data": None,
+            },
+        )
+
     return app
 
 
